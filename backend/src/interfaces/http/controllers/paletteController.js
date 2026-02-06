@@ -10,6 +10,12 @@ class PaletteController {
 
   list = async (req, res) => {
     const result = await this.paletteService.listForUser(req.auth.userId, req.query);
+    const etag = buildPaletteListETag(result);
+    res.setHeader("etag", etag);
+    if (isConditionalHit(req.headers["if-none-match"], etag)) {
+      return res.status(304).end();
+    }
+
     res.status(200).json({
       success: true,
       data: result,
@@ -142,6 +148,25 @@ function buildPaletteETag(palette) {
     isPublic: palette.isPublic,
     updatedAt: palette.updatedAt,
     tokens: palette.tokens,
+  });
+
+  return `"${createHash("sha1").update(fingerprint).digest("hex")}"`;
+}
+
+function buildPaletteListETag(result) {
+  const fingerprint = JSON.stringify({
+    total: result.total,
+    limit: result.limit,
+    offset: result.offset,
+    hasMore: result.hasMore,
+    items: Array.isArray(result.items)
+      ? result.items.map((item) => ({
+          id: item.id,
+          updatedAt: item.updatedAt,
+          isPublic: item.isPublic,
+          shareId: item.shareId || null,
+        }))
+      : [],
   });
 
   return `"${createHash("sha1").update(fingerprint).digest("hex")}"`;

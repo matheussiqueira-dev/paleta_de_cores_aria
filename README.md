@@ -1,182 +1,185 @@
-# Paleta de Cores ARIA - Backend
+# Paleta de Cores ARIA
 
-## Visao geral do backend
-O backend do **Paleta de Cores ARIA** fornece uma API REST versionada para autenticacao, gestao de paletas, compartilhamento publico e auditoria de acessibilidade.
+## Visão geral
+**Paleta de Cores ARIA** é um studio fullstack para criação, validação e operação de paletas com foco em acessibilidade WCAG, handoff técnico e sincronização em nuvem.
 
-Objetivos de negocio:
-- Permitir operacao segura de paletas por usuario.
-- Garantir consistencia de dados entre sessao local e nuvem.
-- Oferecer contrato estavel para integracao com frontend e automacoes.
+Objetivos de negócio:
+- Reduzir retrabalho entre design e desenvolvimento.
+- Aumentar consistência visual com tokens versionáveis.
+- Garantir contraste e qualidade de UI antes da publicação.
 
-Principais capacidades:
-- Autenticacao JWT (access + refresh) com rotacao.
-- CRUD de paletas com filtros, ordenacao e analytics.
-- Compartilhamento publico por `shareId` com cache condicional.
-- Auditoria de contraste da paleta (privada e publica).
-- Controles de confiabilidade para retries e concorrencia otimista.
+Público-alvo:
+- Product Designers
+- Frontend Engineers
+- Times de Design System
 
-## Arquitetura adotada
-Arquitetura modular em camadas, inspirada em Clean Architecture:
+## Arquitetura e decisões técnicas
+Arquitetura geral:
+- **Frontend**: SPA estática (HTML/CSS/JS vanilla) com design system local, simulação de visão, auditoria WCAG e integração com API.
+- **Backend**: API REST versionada (`/api/v1`) em Node.js + Express, com camadas inspiradas em Clean Architecture.
+- **Persistência**: banco em arquivo JSON com escrita atômica e repositórios.
 
-- `domain`: constantes e erros de dominio.
-- `application`: servicos de negocio (`AuthService`, `PaletteService`, `MetricsService`).
-- `infrastructure`: persistencia, repositorios e seguranca (hash/JWT).
-- `interfaces/http`: controllers, middlewares, schemas e rotas.
+Decisões principais:
+- **Monolito modular** no backend para simplicidade operacional e evolução incremental.
+- **Separação por camadas** (`domain`, `application`, `infrastructure`, `interfaces/http`) para manter responsabilidades claras.
+- **Contratos validados com Zod** para reduzir risco de input inválido e facilitar manutenção.
+- **Confiabilidade em produção** com idempotência, ETag/concorrência otimista, lockout de login e rate limit.
 
-Tipo de sistema:
-- Monolito modular (Node.js + Express), preparado para evolucao por fronteiras de contexto.
+## Stack e tecnologias
+Frontend:
+- HTML5 semântico
+- CSS moderno com tokens visuais e componentes reutilizáveis
+- JavaScript vanilla (estado local, auditoria, integração API)
 
-## Tecnologias utilizadas
+Backend:
 - Node.js 20+
 - Express 4
-- Zod (validacao)
+- Zod
 - JWT (`jsonwebtoken`)
-- Hash de senha (`bcryptjs`)
-- Seguranca HTTP: `helmet`, `hpp`, `cors`, `express-rate-limit`
-- Logs estruturados: `pino`
+- `bcryptjs`
+- Segurança HTTP: `helmet`, `hpp`, `cors`, `express-rate-limit`
+- Logging estruturado: `pino`
 - Testes: `node:test` + `supertest`
 
-## Recursos de seguranca e confiabilidade
-### Autenticacao e autorizacao
-- Access token curto + refresh token com rotacao.
-- Deteccao de reuse de refresh token com revogacao de sessoes.
-- Controle de role (`user`/`admin`) para endpoints sensiveis.
+## Funcionalidades principais
+Laboratório de paletas:
+- Edição de 8 tokens centrais (primary, secondary, accent, background, surface, text, muted, border)
+- Presets e geração automática de harmonia
+- Histórico com undo/redo
 
-### Protecoes de API
-- Validacao de payload e query com Zod.
-- Rate limit global e rate limit especifico para login.
-- Lockout progressivo para tentativas invalidas de login.
-- Sanitizacao basica de entradas textuais.
+Acessibilidade e UX:
+- Checker de contraste manual
+- Auditoria automática da paleta com score/grade
+- Auto correção de contraste para nível AA
+- Simulação de deficiência de visão (protanopia, deuteranopia, tritanopia, acromatopsia)
 
-### Confiabilidade operacional
-- Escrita atomica do arquivo de dados.
-- Idempotencia por `Idempotency-Key` em create/import de paletas.
-- Concorrencia otimista com `ETag` + `If-Match` em update/delete.
-- Cache condicional com `If-None-Match` em endpoints de leitura.
-- `requestId` por requisicao e respostas de erro padronizadas.
+Biblioteca local:
+- Salvar, atualizar, favoritar e remover paletas localmente
+- Filtro por favoritas
 
-## Endpoints principais
-Base local: `http://localhost:3333`
+Nuvem (API):
+- Cadastro/login/logout com sessão JWT e refresh token
+- Publicação e sincronização de paletas
+- Controle de visibilidade pública/privada
+- Exclusão remota de paletas
+- Filtros cloud por busca, visibilidade e ordenação
+- Analytics cloud com score médio de auditoria, distribuição por grade e riscos recorrentes
 
-### Health
-- `GET /api/v1/health/live`
-- `GET /api/v1/health/ready`
-- `GET /api/v1/health/info`
-- `GET /api/v1/health/metrics` (admin)
-- `GET /api/v1/docs/openapi.json`
-
-### Auth
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/refresh`
-- `POST /api/v1/auth/logout`
-- `POST /api/v1/auth/logout-all`
-- `GET /api/v1/auth/me`
-- `POST /api/v1/auth/change-password`
-
-### Palettes
-- `GET /api/v1/palettes`
-- `POST /api/v1/palettes`
-- `POST /api/v1/palettes/import`
-- `GET /api/v1/palettes/:paletteId`
-- `PATCH /api/v1/palettes/:paletteId`
-- `DELETE /api/v1/palettes/:paletteId`
-- `GET /api/v1/palettes/:paletteId/audit`
-- `POST /api/v1/palettes/:paletteId/share`
-- `POST /api/v1/palettes/:paletteId/unshare`
-- `GET /api/v1/palettes/analytics/summary`
-- `GET /api/v1/palettes/public/:shareId`
-- `GET /api/v1/palettes/public/:shareId/audit`
-
-## Setup e execucao
-### Pre-requisitos
-- Node.js 20+
-- npm 10+
-
-### Instalacao
-```bash
-npm --prefix backend install
-```
-
-### Desenvolvimento
-```bash
-npm --prefix backend run dev
-```
-
-### Execucao em modo start
-```bash
-npm --prefix backend run start
-```
-
-### Testes
-```bash
-npm --prefix backend run test
-```
-
-## Variaveis de ambiente relevantes
-Use `backend/.env.example` como base.
-
-- `PORT`
-- `NODE_ENV`
-- `LOG_LEVEL`
-- `DATA_FILE`
-- `CORS_ORIGIN`
-- `RATE_LIMIT_WINDOW_MS`
-- `RATE_LIMIT_MAX`
-- `AUTH_LOGIN_RATE_LIMIT_WINDOW_MS`
-- `AUTH_LOGIN_RATE_LIMIT_MAX`
-- `AUTH_MAX_FAILED_ATTEMPTS`
-- `AUTH_LOCKOUT_WINDOW_MS`
-- `IDEMPOTENCY_TTL_MS`
-- `JWT_ACCESS_SECRET`
-- `JWT_REFRESH_SECRET`
-- `ACCESS_TOKEN_TTL`
-- `REFRESH_TOKEN_TTL`
-- `BCRYPT_ROUNDS`
-- `ADMIN_BOOTSTRAP_EMAIL`
+Confiabilidade e segurança backend:
+- Idempotency-Key para criação/importação
+- ETag + If-None-Match em leituras
+- If-Match para concorrência otimista em atualização/exclusão
+- Lockout progressivo após falhas de login
+- Rate limiting global e específico para autenticação
 
 ## Estrutura do projeto
 ```text
-backend/
-├─ data/
-│  └─ database.json
+.
+├─ assets/
+│  ├─ css/
+│  │  └─ styles.css
+│  └─ js/
+│     └─ app.js
+├─ backend/
+│  ├─ data/
+│  ├─ docs/
+│  │  └─ openapi.json
+│  ├─ src/
+│  │  ├─ application/
+│  │  ├─ config/
+│  │  ├─ domain/
+│  │  ├─ infrastructure/
+│  │  ├─ interfaces/http/
+│  │  ├─ utils/
+│  │  ├─ app.js
+│  │  └─ server.js
+│  └─ tests/
 ├─ docs/
-│  └─ openapi.json
-├─ src/
-│  ├─ app.js
-│  ├─ server.js
-│  ├─ application/
-│  │  └─ services/
-│  ├─ config/
-│  ├─ domain/
-│  ├─ infrastructure/
-│  │  ├─ persistence/
-│  │  ├─ repositories/
-│  │  └─ security/
-│  ├─ interfaces/
-│  │  └─ http/
-│  │     ├─ controllers/
-│  │     ├─ middlewares/
-│  │     ├─ routes/
-│  │     └─ schemas/
-│  └─ utils/
-└─ tests/
+├─ index.html
+├─ package.json
+└─ README.md
 ```
 
-## Boas praticas e padroes aplicados
-- Separacao clara de responsabilidade por camada.
-- Erros de dominio com codigo padronizado e HTTP consistente.
-- Contratos de entrada validados e saneados antes da regra de negocio.
-- Logs estruturados com correlacao por `requestId`.
-- Testes automatizados cobrindo auth, health, CRUD, idempotencia e concorrencia.
-- API versionada (`/api/v1`) com contrato OpenAPI atualizado.
+## Instalação e execução
+Pré-requisitos:
+- Node.js 20+
+- npm 10+
+
+Instalação de dependências:
+```bash
+npm install
+npm --prefix backend install
+```
+
+Executar backend (desenvolvimento):
+```bash
+npm run backend:dev
+```
+
+Executar backend (produção local):
+```bash
+npm run backend:start
+```
+
+Executar frontend estático local:
+```bash
+npm run preview
+```
+
+## Testes e qualidade
+Executar todos os testes do projeto:
+```bash
+npm test
+```
+
+Executar apenas backend:
+```bash
+npm run backend:test
+```
+
+Checagem de sintaxe frontend:
+```bash
+npm run test:frontend
+```
+
+## API e documentação
+- Base local padrão: `http://localhost:3333`
+- OpenAPI: `http://localhost:3333/api/v1/docs/openapi.json`
+
+Endpoints principais:
+- Auth: `/api/v1/auth/*`
+- Paletas: `/api/v1/palettes/*`
+- Health: `/api/v1/health/*`
+
+## Deploy
+Frontend:
+- Pode ser publicado em GitHub Pages/Vercel/Netlify como site estático.
+
+Backend:
+- Pode ser executado em VPS/container (Node.js) com variáveis de ambiente configuradas.
+- Recomenda-se reverse proxy (Nginx/Caddy), TLS e monitoramento.
+
+Checklist recomendado de produção:
+- Definir segredos JWT fortes (`JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`)
+- Restringir `CORS_ORIGIN`
+- Ajustar limites/rate limit para o tráfego esperado
+- Habilitar logs centralizados e alertas
+- Planejar migração de persistência para banco relacional em escala
+
+## Boas práticas adotadas
+- Código orientado a responsabilidade única e baixo acoplamento
+- Contratos de API com validação de entrada e erros padronizados
+- Segurança defensiva por padrão (headers, rate limit, autenticação robusta)
+- Experiência de usuário acessível e responsiva
+- Evolução orientada por testes de integração
 
 ## Melhorias futuras
-- Migracao para banco relacional (PostgreSQL) com indices e migracoes.
-- Fila assincroma para tarefas pesadas de analise e integracoes.
-- Telemetria com Prometheus + tracing distribuido.
-- RBAC com permissoes granulares por recurso.
-- Testes de carga automatizados em pipeline CI.
+- Migração para PostgreSQL + migrations
+- Paginação cursor-based para grandes volumes
+- Feature flags para rollout gradual de funcionalidades
+- Observabilidade avançada (tracing distribuído + dashboards)
+- Pipeline CI/CD com gates de segurança e cobertura
+- Testes E2E de interface com Playwright
 
 ---
 

@@ -55,6 +55,7 @@ test("palette flow: CRUD, share e endpoint público", async () => {
     assert.equal(listResponse.status, 200);
     assert.equal(listResponse.body.data.total, 1);
     assert.equal(listResponse.body.data.hasMore, false);
+    assert.ok(listResponse.headers.etag);
 
     const shareResponse = await api
       .post(`/api/v1/palettes/${paletteId}/share`)
@@ -104,6 +105,9 @@ test("palette flow: CRUD, share e endpoint público", async () => {
       .set("authorization", `Bearer ${accessToken}`);
     assert.equal(analyticsResponse.status, 200);
     assert.equal(analyticsResponse.body.data.total, 1);
+    assert.ok(typeof analyticsResponse.body.data.quality?.averageAuditScore === "number");
+    assert.ok(typeof analyticsResponse.body.data.quality?.gradeDistribution?.CRITICO === "number");
+    assert.ok(Array.isArray(analyticsResponse.body.data.quality?.topFailingChecks));
 
     const deleteResponse = await api
       .delete(`/api/v1/palettes/${paletteId}`)
@@ -192,6 +196,24 @@ test("palette list: filtros por visibilidade/tags e ordenação", async () => {
     assert.equal(sortedByName.body.data.items.length, 3);
     assert.equal(sortedByName.body.data.items[0].name, "A Branding");
     assert.equal(sortedByName.body.data.items[2].name, "Z Produto");
+
+    const firstEtag = sortedByName.headers.etag;
+    assert.ok(firstEtag);
+
+    const conditionalList = await api
+      .get("/api/v1/palettes?sortBy=name&sortDir=asc")
+      .set("authorization", `Bearer ${accessToken}`)
+      .set("if-none-match", firstEtag);
+    assert.equal(conditionalList.status, 304);
+
+    const analyticsResponse = await api
+      .get("/api/v1/palettes/analytics/summary")
+      .set("authorization", `Bearer ${accessToken}`);
+    assert.equal(analyticsResponse.status, 200);
+    assert.equal(analyticsResponse.body.data.total, 3);
+    assert.ok(typeof analyticsResponse.body.data.quality?.averageAuditScore === "number");
+    assert.ok(typeof analyticsResponse.body.data.quality?.gradeDistribution?.EXCELENTE === "number");
+    assert.ok(Array.isArray(analyticsResponse.body.data.quality?.topFailingChecks));
   } finally {
     await context.cleanup();
   }

@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Paleta ARIA Backend API",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "description": "API REST versionada para autenticação e gerenciamento de paletas de cores."
   },
   "servers": [
@@ -523,9 +523,97 @@
             "bearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "visibility",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "public",
+                "private"
+              ]
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "updatedAt",
+                "createdAt",
+                "name"
+              ]
+            }
+          },
+          {
+            "name": "sortDir",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "if-none-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ETag condicional para retornar 304 quando a listagem não mudou."
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Lista retornada"
+            "description": "Lista retornada",
+            "headers": {
+              "etag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Sem alterações na lista"
           },
           "401": {
             "description": "Não autenticado"
@@ -604,7 +692,7 @@
         "tags": [
           "Palettes"
         ],
-        "summary": "Resumo analítico das paletas do usuário",
+        "summary": "Resumo analítico das paletas do usuário (volume, tags e qualidade de contraste)",
         "security": [
           {
             "bearerAuth": []
@@ -612,7 +700,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Resumo retornado"
+            "description": "Resumo retornado com métricas de qualidade (score médio, distribuição de grades e riscos recorrentes)"
           }
         }
       }

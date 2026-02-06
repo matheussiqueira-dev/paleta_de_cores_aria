@@ -9,6 +9,7 @@
     savedPaletteFilter: "aria.savedPalettes.filter.v1",
     apiConfig: "aria.api.config.v1",
     apiSession: "aria.api.session.v1",
+    apiCloudQuery: "aria.api.cloudQuery.v1",
   };
 
   const THEME_MODES = ["light", "dark", "system"];
@@ -153,7 +154,16 @@
       refreshToken: "",
       user: null,
       cloudPalettes: [],
+      cloudTotal: 0,
+      cloudHasMore: false,
       loadingCloudPalettes: false,
+      cloudQuery: {
+        search: "",
+        visibility: "all",
+        sortBy: "updatedAt",
+        sortDir: "desc",
+      },
+      cloudAnalytics: null,
     },
   };
 
@@ -163,6 +173,8 @@
   let mediaQueryList = null;
   let toastTimer = null;
   let palettePersistTimer = null;
+  let cloudSyncTimer = null;
+  let cloudSyncVersion = 0;
 
   const elements = {
     root: document.documentElement,
@@ -224,8 +236,16 @@
     apiPublishPublicCheckbox: document.getElementById("api-publish-public"),
     apiPublishPaletteButton: document.getElementById("api-publish-palette"),
     apiSyncPalettesButton: document.getElementById("api-sync-palettes"),
+    apiCloudSearchInput: document.getElementById("api-cloud-search"),
+    apiCloudVisibilitySelect: document.getElementById("api-cloud-visibility"),
+    apiCloudSortSelect: document.getElementById("api-cloud-sort"),
+    apiCloudSortDirSelect: document.getElementById("api-cloud-sort-dir"),
+    apiCloudResetFiltersButton: document.getElementById("api-cloud-reset-filters"),
     apiCloudSummary: document.getElementById("api-cloud-summary"),
     apiCloudPalettesList: document.getElementById("api-cloud-palettes-list"),
+    apiCloudQualitySummary: document.getElementById("api-cloud-quality-summary"),
+    apiCloudQualityDistribution: document.getElementById("api-cloud-quality-distribution"),
+    apiCloudRiskList: document.getElementById("api-cloud-risk-list"),
     uxQualityLabel: document.getElementById("ux-quality-label"),
     uxContrastScore: document.getElementById("ux-contrast-score"),
     uxLibraryCount: document.getElementById("ux-library-count"),
@@ -254,6 +274,7 @@
     hydrateSavedPalettesFromStorage();
     hydrateSavedPaletteFilter();
     hydrateApiStateFromStorage();
+    hydrateApiCloudQueryFromStorage();
 
     initializeHistory(state.palette);
     buildSwatchCards();
@@ -270,7 +291,9 @@
     renderSavedPalettes();
     updateSavedPaletteControls();
     syncApiInputs();
+    syncApiCloudFilterInputs();
     renderCloudPalettes();
+    renderCloudAnalytics();
     updateApiSessionStatus();
     updateApiControls();
     configureInputAccessibility();
@@ -699,6 +722,25 @@
       });
     }
 
+    elements.apiCloudSearchInput?.addEventListener("input", () => {
+      updateCloudQueryFromInputs();
+      scheduleCloudSync(260);
+    });
+
+    [elements.apiCloudVisibilitySelect, elements.apiCloudSortSelect, elements.apiCloudSortDirSelect].forEach((input) => {
+      input?.addEventListener("change", async () => {
+        updateCloudQueryFromInputs();
+        await syncCloudPalettes();
+      });
+    });
+
+    if (elements.apiCloudResetFiltersButton) {
+      elements.apiCloudResetFiltersButton.addEventListener("click", async () => {
+        resetCloudQuery();
+        await syncCloudPalettes();
+      });
+    }
+
     elements.apiBaseUrlInput?.addEventListener("input", () => {
       elements.apiBaseUrlInput.classList.remove("is-invalid");
     });
@@ -727,6 +769,8 @@
         await syncCloudPalettes();
       } else {
         clearApiSession();
+        renderCloudPalettes();
+        renderCloudAnalytics();
       }
     }
   }
@@ -805,6 +849,7 @@
       updateApiSessionStatus();
       updateApiControls();
       renderCloudPalettes();
+      renderCloudAnalytics();
       showToast("Sessão encerrada.");
     }
   }
@@ -835,6 +880,9 @@
         "/api/v1/palettes",
         {
           method: "POST",
+          headers: {
+            "idempotency-key": createIdempotencyKey("palette-create"),
+          },
           body: {
             name: sanitizePaletteName(elements.paletteNameInput?.value || state.paletteName) || "Paleta sem nome",
             description: "Publicada pelo editor Paleta ARIA.",
@@ -866,14 +914,32 @@
     }
   }
 
-  async function syncCloudPalettes() {
+  function scheduleCloudSync(delayMs = 220) {
+    if (cloudSyncTimer) {
+      window.clearTimeout(cloudSyncTimer);
+      cloudSyncTimer = null;
+    }
+
+    cloudSyncTimer = window.setTimeout(async () => {
+      cloudSyncTimer = null;
+      await syncCloudPalettes({ silent: true });
+    }, Math.max(0, Number(delayMs) || 0));
+  }
+
+  async function syncCloudPalettes(options = {}) {
     if (!elements.apiCloudPalettesList || !elements.apiCloudSummary) {
       return;
     }
+    const silent = Boolean(options.silent);
+    const requestVersion = ++cloudSyncVersion;
 
     if (!isApiAuthenticated()) {
       state.api.cloudPalettes = [];
+      state.api.cloudTotal = 0;
+      state.api.cloudHasMore = false;
+      state.api.cloudAnalytics = null;
       renderCloudPalettes();
+      renderCloudAnalytics();
       updateApiControls();
       return;
     }
@@ -883,21 +949,68 @@
     renderCloudPalettes();
 
     try {
+      const params = new URLSearchParams({
+        limit: "30",
+        offset: "0",
+        visibility: state.api.cloudQuery.visibility,
+        sortBy: state.api.cloudQuery.sortBy,
+        sortDir: state.api.cloudQuery.sortDir,
+      });
+      if (state.api.cloudQuery.search) {
+        params.set("search", state.api.cloudQuery.search);
+      }
+
       const response = await apiRequest(
-        "/api/v1/palettes?limit=30&offset=0",
+        `/api/v1/palettes?${params.toString()}`,
         {
           method: "GET",
         },
         { auth: true }
       );
+      if (requestVersion !== cloudSyncVersion) {
+        return;
+      }
       state.api.cloudPalettes = Array.isArray(response?.items) ? response.items : [];
+      state.api.cloudTotal = normalizePositiveInteger(response?.total, state.api.cloudPalettes.length);
+      state.api.cloudHasMore = Boolean(response?.hasMore);
+      await syncCloudAnalytics({ silent: true });
       renderCloudPalettes();
     } catch (error) {
-      showToast(getApiErrorMessage(error, "Falha ao sincronizar paletas da nuvem."));
+      if (!silent) {
+        showToast(getApiErrorMessage(error, "Falha ao sincronizar paletas da nuvem."));
+      }
     } finally {
+      if (requestVersion !== cloudSyncVersion) {
+        return;
+      }
       state.api.loadingCloudPalettes = false;
       updateApiControls();
       renderCloudPalettes();
+      renderCloudAnalytics();
+    }
+  }
+
+  async function syncCloudAnalytics(options = {}) {
+    if (!isApiAuthenticated()) {
+      state.api.cloudAnalytics = null;
+      return;
+    }
+    const silent = Boolean(options.silent);
+
+    try {
+      const response = await apiRequest(
+        "/api/v1/palettes/analytics/summary",
+        {
+          method: "GET",
+        },
+        { auth: true }
+      );
+      state.api.cloudAnalytics = response || null;
+    } catch (error) {
+      state.api.cloudAnalytics = null;
+      if (!silent) {
+        showToast(getApiErrorMessage(error, "Falha ao atualizar analytics da nuvem."));
+      }
     }
   }
 
@@ -927,15 +1040,22 @@
     }
 
     if (state.api.cloudPalettes.length === 0) {
-      elements.apiCloudSummary.textContent = "Nenhuma paleta registrada na nuvem.";
+      elements.apiCloudSummary.textContent = hasActiveCloudFilters()
+        ? "Nenhuma paleta encontrada para os filtros atuais."
+        : "Nenhuma paleta registrada na nuvem.";
       const empty = document.createElement("p");
       empty.className = "cloud-empty";
-      empty.textContent = "Publique a paleta atual para começar a sincronização.";
+      empty.textContent = hasActiveCloudFilters()
+        ? "Ajuste os filtros para ampliar os resultados."
+        : "Publique a paleta atual para começar a sincronização.";
       elements.apiCloudPalettesList.appendChild(empty);
       return;
     }
 
-    elements.apiCloudSummary.textContent = `${state.api.cloudPalettes.length} paleta(s) sincronizada(s) da API.`;
+    const visibleCount = state.api.cloudPalettes.length;
+    const totalCount = Math.max(state.api.cloudTotal, visibleCount);
+    const suffix = state.api.cloudHasMore ? " Exibindo a primeira página de resultados." : "";
+    elements.apiCloudSummary.textContent = `${visibleCount} de ${totalCount} paleta(s) carregada(s) da API.${suffix}`;
     const formatter = new Intl.DateTimeFormat("pt-BR", {
       dateStyle: "short",
       timeStyle: "short",
@@ -995,6 +1115,15 @@
       actions.appendChild(applyButton);
       actions.appendChild(saveLocalButton);
 
+      const visibilityButton = document.createElement("button");
+      visibilityButton.type = "button";
+      visibilityButton.className = "button button--ghost";
+      visibilityButton.textContent = entry.isPublic ? "Tornar privada" : "Tornar pública";
+      visibilityButton.addEventListener("click", async () => {
+        await toggleCloudPaletteVisibility(entry);
+      });
+      actions.appendChild(visibilityButton);
+
       if (entry.isPublic && entry.shareId) {
         const copyPublicLinkButton = document.createElement("button");
         copyPublicLinkButton.type = "button";
@@ -1007,10 +1136,141 @@
         actions.appendChild(copyPublicLinkButton);
       }
 
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className = "button button--ghost is-destructive";
+      removeButton.textContent = "Excluir";
+      removeButton.addEventListener("click", async () => {
+        await deleteCloudPalette(entry);
+      });
+      actions.appendChild(removeButton);
+
       card.appendChild(header);
       card.appendChild(actions);
       elements.apiCloudPalettesList.appendChild(card);
     });
+  }
+
+  function renderCloudAnalytics() {
+    if (!elements.apiCloudQualitySummary || !elements.apiCloudQualityDistribution || !elements.apiCloudRiskList) {
+      return;
+    }
+
+    elements.apiCloudQualityDistribution.innerHTML = "";
+    elements.apiCloudRiskList.innerHTML = "";
+
+    if (!isApiAuthenticated()) {
+      elements.apiCloudQualitySummary.textContent = "Faça login para visualizar métricas de qualidade da biblioteca.";
+      return;
+    }
+
+    const quality = state.api.cloudAnalytics?.quality;
+    if (!quality) {
+      elements.apiCloudQualitySummary.textContent = "Analytics indisponível no momento para esta sessão.";
+      return;
+    }
+
+    elements.apiCloudQualitySummary.textContent = `Score médio de auditoria: ${Number(
+      quality.averageAuditScore || 0
+    ).toFixed(2)} / 100`;
+
+    const orderedGrades = ["EXCELENTE", "CONSISTENTE", "ATENCAO", "CRITICO"];
+    orderedGrades.forEach((grade) => {
+      const item = document.createElement("li");
+      const label = document.createElement("span");
+      label.textContent = grade;
+      const value = document.createElement("strong");
+      value.textContent = String(normalizePositiveInteger(quality.gradeDistribution?.[grade], 0));
+      item.appendChild(label);
+      item.appendChild(value);
+      elements.apiCloudQualityDistribution.appendChild(item);
+    });
+
+    const risks = Array.isArray(quality.topFailingChecks) ? quality.topFailingChecks : [];
+    if (risks.length === 0) {
+      const safeItem = document.createElement("li");
+      const label = document.createElement("span");
+      label.textContent = "Sem falhas recorrentes na auditoria";
+      const value = document.createElement("strong");
+      value.textContent = "OK";
+      safeItem.appendChild(label);
+      safeItem.appendChild(value);
+      elements.apiCloudRiskList.appendChild(safeItem);
+      return;
+    }
+
+    risks.forEach((risk) => {
+      const item = document.createElement("li");
+      const label = document.createElement("span");
+      label.textContent = sanitizeTextValue(risk.label, 140) || "Checkpoint";
+      const value = document.createElement("strong");
+      value.textContent = `${normalizePositiveInteger(risk.count, 0)} ocorrencia(s)`;
+      item.appendChild(label);
+      item.appendChild(value);
+      elements.apiCloudRiskList.appendChild(item);
+    });
+  }
+
+  async function toggleCloudPaletteVisibility(entry) {
+    if (!entry?.id || !isApiAuthenticated()) {
+      return;
+    }
+
+    try {
+      if (entry.isPublic) {
+        await apiRequest(
+          `/api/v1/palettes/${entry.id}/unshare`,
+          {
+            method: "POST",
+          },
+          { auth: true }
+        );
+        showToast("Paleta definida como privada.");
+      } else {
+        const shared = await apiRequest(
+          `/api/v1/palettes/${entry.id}/share`,
+          {
+            method: "POST",
+          },
+          { auth: true }
+        );
+        if (shared?.shareId) {
+          const shareUrl = `${state.api.baseUrl}/api/v1/palettes/public/${shared.shareId}`;
+          copyText(shareUrl, "Link público da paleta copiado.");
+        } else {
+          showToast("Paleta publicada como pública.");
+        }
+      }
+
+      await syncCloudPalettes({ silent: true });
+    } catch (error) {
+      showToast(getApiErrorMessage(error, "Falha ao atualizar visibilidade da paleta."));
+    }
+  }
+
+  async function deleteCloudPalette(entry) {
+    if (!entry?.id || !isApiAuthenticated()) {
+      return;
+    }
+    const paletteName = sanitizePaletteName(entry.name) || "paleta sem nome";
+    const shouldDelete = window.confirm(`Excluir "${paletteName}" da nuvem? Esta ação não pode ser desfeita.`);
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      await apiRequest(
+        `/api/v1/palettes/${entry.id}`,
+        {
+          method: "DELETE",
+        },
+        { auth: true }
+      );
+      showToast("Paleta removida da nuvem.");
+      await syncCloudPalettes({ silent: true });
+    } catch (error) {
+      showToast(getApiErrorMessage(error, "Falha ao remover paleta da nuvem."));
+    }
   }
 
   function applyCloudPalette(entry) {
@@ -1166,6 +1426,7 @@
       updateApiSessionStatus();
       updateApiControls();
       renderCloudPalettes();
+      renderCloudAnalytics();
       return false;
     }
   }
@@ -1212,10 +1473,18 @@
   }
 
   function clearApiSession() {
+    if (cloudSyncTimer) {
+      window.clearTimeout(cloudSyncTimer);
+      cloudSyncTimer = null;
+    }
+    cloudSyncVersion += 1;
     state.api.user = null;
     state.api.accessToken = "";
     state.api.refreshToken = "";
     state.api.cloudPalettes = [];
+    state.api.cloudTotal = 0;
+    state.api.cloudHasMore = false;
+    state.api.cloudAnalytics = null;
     state.api.loadingCloudPalettes = false;
     persistApiSession();
   }
@@ -1267,11 +1536,73 @@
     );
   }
 
+  function hydrateApiCloudQueryFromStorage() {
+    const queryRaw = safeStorageGet(STORAGE_KEYS.apiCloudQuery);
+    if (!queryRaw) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(queryRaw);
+      const search = sanitizeTextValue(parsed?.search, 120);
+      const visibility = normalizeCloudVisibility(parsed?.visibility);
+      const sortBy = normalizeCloudSortBy(parsed?.sortBy);
+      const sortDir = normalizeCloudSortDir(parsed?.sortDir);
+
+      state.api.cloudQuery = {
+        search,
+        visibility,
+        sortBy,
+        sortDir,
+      };
+    } catch (error) {
+      // Ignora estado inválido.
+    }
+  }
+
+  function persistApiCloudQuery() {
+    safeStorageSet(STORAGE_KEYS.apiCloudQuery, JSON.stringify(state.api.cloudQuery));
+  }
+
   function syncApiInputs() {
     if (!elements.apiBaseUrlInput) {
       return;
     }
     elements.apiBaseUrlInput.value = state.api.baseUrl;
+  }
+
+  function syncApiCloudFilterInputs() {
+    if (elements.apiCloudSearchInput) {
+      elements.apiCloudSearchInput.value = state.api.cloudQuery.search;
+    }
+    if (elements.apiCloudVisibilitySelect) {
+      elements.apiCloudVisibilitySelect.value = state.api.cloudQuery.visibility;
+    }
+    if (elements.apiCloudSortSelect) {
+      elements.apiCloudSortSelect.value = state.api.cloudQuery.sortBy;
+    }
+    if (elements.apiCloudSortDirSelect) {
+      elements.apiCloudSortDirSelect.value = state.api.cloudQuery.sortDir;
+    }
+  }
+
+  function updateCloudQueryFromInputs() {
+    state.api.cloudQuery.search = sanitizeTextValue(elements.apiCloudSearchInput?.value || "", 120);
+    state.api.cloudQuery.visibility = normalizeCloudVisibility(elements.apiCloudVisibilitySelect?.value);
+    state.api.cloudQuery.sortBy = normalizeCloudSortBy(elements.apiCloudSortSelect?.value);
+    state.api.cloudQuery.sortDir = normalizeCloudSortDir(elements.apiCloudSortDirSelect?.value);
+    persistApiCloudQuery();
+  }
+
+  function resetCloudQuery() {
+    state.api.cloudQuery = {
+      search: "",
+      visibility: "all",
+      sortBy: "updatedAt",
+      sortDir: "desc",
+    };
+    persistApiCloudQuery();
+    syncApiCloudFilterInputs();
   }
 
   function updateApiSessionStatus() {
@@ -1294,6 +1625,7 @@
   function updateApiControls() {
     const isConnected = isApiAuthenticated();
     const isLoading = state.api.loadingCloudPalettes;
+    const lockCloudFilters = !isConnected || isLoading;
 
     if (elements.apiPublishPaletteButton) {
       elements.apiPublishPaletteButton.disabled = !isConnected || isLoading;
@@ -1306,6 +1638,21 @@
     if (elements.apiLogoutButton) {
       elements.apiLogoutButton.disabled = !isConnected;
       elements.apiLogoutButton.setAttribute("aria-disabled", String(elements.apiLogoutButton.disabled));
+    }
+    if (elements.apiCloudSearchInput) {
+      elements.apiCloudSearchInput.disabled = lockCloudFilters;
+    }
+    if (elements.apiCloudVisibilitySelect) {
+      elements.apiCloudVisibilitySelect.disabled = lockCloudFilters;
+    }
+    if (elements.apiCloudSortSelect) {
+      elements.apiCloudSortSelect.disabled = lockCloudFilters;
+    }
+    if (elements.apiCloudSortDirSelect) {
+      elements.apiCloudSortDirSelect.disabled = lockCloudFilters;
+    }
+    if (elements.apiCloudResetFiltersButton) {
+      elements.apiCloudResetFiltersButton.disabled = lockCloudFilters;
     }
   }
 
@@ -1496,7 +1843,7 @@
     const tokenContrastRatio = contrastRatio(state.palette.text, state.palette.background);
     const localCount = state.savedPalettes.length;
     const favoritesCount = state.savedPalettes.filter((entry) => entry.isFavorite).length;
-    const cloudCount = state.api.cloudPalettes.length;
+    const cloudCount = Math.max(state.api.cloudTotal, state.api.cloudPalettes.length);
     const authenticated = isApiAuthenticated();
     const auditReport = buildPaletteAuditReport(state.palette);
     const auditScore = auditReport?.audit?.score ?? 0;
@@ -2287,6 +2634,51 @@
       return window.crypto.randomUUID();
     }
     return `palette-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  }
+
+  function createIdempotencyKey(scope) {
+    const normalizedScope = sanitizeTextValue(scope || "generic", 40).replace(/\s+/g, "-").toLowerCase() || "generic";
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      return `web-${normalizedScope}-${window.crypto.randomUUID()}`;
+    }
+    return `web-${normalizedScope}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  }
+
+  function sanitizeTextValue(value, maxLength) {
+    if (typeof value !== "string") {
+      return "";
+    }
+    return value
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, Math.max(0, Number(maxLength) || 0));
+  }
+
+  function normalizeCloudVisibility(value) {
+    const normalized = String(value || "all").trim().toLowerCase();
+    return ["all", "public", "private"].includes(normalized) ? normalized : "all";
+  }
+
+  function normalizeCloudSortBy(value) {
+    const normalized = String(value || "updatedAt").trim();
+    return ["updatedAt", "createdAt", "name"].includes(normalized) ? normalized : "updatedAt";
+  }
+
+  function normalizeCloudSortDir(value) {
+    const normalized = String(value || "desc").trim().toLowerCase();
+    return normalized === "asc" ? "asc" : "desc";
+  }
+
+  function hasActiveCloudFilters() {
+    return state.api.cloudQuery.search.length > 0 || state.api.cloudQuery.visibility !== "all";
+  }
+
+  function normalizePositiveInteger(value, fallback) {
+    const parsed = Number.parseInt(String(value), 10);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      return fallback;
+    }
+    return parsed;
   }
 
   function persistSavedPalettes() {

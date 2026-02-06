@@ -374,6 +374,45 @@
             <h3>Paletas na nuvem</h3>
             <p class="cloud-helper">Publique a paleta em edicao e sincronize rapidamente para comparacoes remotas.</p>
 
+            <div class="cloud-filters" role="group" aria-label="Filtros da biblioteca cloud">
+              <div class="field">
+                <label for="api-cloud-search">Buscar paletas</label>
+                <input id="api-cloud-search" type="text" maxlength="120" placeholder="Nome, descricao ou tag" />
+              </div>
+
+              <div class="cloud-filters__grid">
+                <div class="field">
+                  <label for="api-cloud-visibility">Visibilidade</label>
+                  <select id="api-cloud-visibility">
+                    <option value="all">Todas</option>
+                    <option value="public">Publicas</option>
+                    <option value="private">Privadas</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="api-cloud-sort">Ordenar por</label>
+                  <select id="api-cloud-sort">
+                    <option value="updatedAt">Atualizacao</option>
+                    <option value="createdAt">Criacao</option>
+                    <option value="name">Nome</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="api-cloud-sort-dir">Direcao</label>
+                  <select id="api-cloud-sort-dir">
+                    <option value="desc">Mais recentes</option>
+                    <option value="asc">Mais antigas</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="actions">
+                <button id="api-cloud-reset-filters" type="button" class="button button--ghost">Limpar filtros</button>
+              </div>
+            </div>
+
             <div class="field cloud-switch">
               <label for="api-publish-public">Publicar como paleta publica (gera link)</label>
               <input id="api-publish-public" type="checkbox" />
@@ -386,6 +425,15 @@
 
             <p id="api-cloud-summary" class="cloud-summary">Nenhuma paleta sincronizada ainda.</p>
             <div id="api-cloud-palettes-list" class="cloud-palettes" aria-live="polite"></div>
+
+            <section class="cloud-analytics" aria-label="Saude da biblioteca cloud">
+              <h4>Saude da biblioteca cloud</h4>
+              <p id="api-cloud-quality-summary" class="cloud-summary">
+                Sincronize para visualizar score medio de acessibilidade da biblioteca.
+              </p>
+              <ul id="api-cloud-quality-distribution" class="cloud-quality-list" aria-live="polite"></ul>
+              <ul id="api-cloud-risk-list" class="cloud-risk-list" aria-live="polite"></ul>
+            </section>
           </article>
         </div>
       </section>

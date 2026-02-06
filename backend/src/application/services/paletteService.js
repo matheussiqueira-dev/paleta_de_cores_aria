@@ -216,12 +216,52 @@ class PaletteService {
       isPublic: entry.isPublic,
     }));
 
+    const gradeDistribution = createEmptyGradeDistribution();
+    const failingChecksMap = new Map();
+    let auditScoreAccumulator = 0;
+
+    items.forEach((entry) => {
+      const audit = buildPaletteAudit(entry.tokens || {});
+      auditScoreAccumulator += audit.score;
+      if (Object.prototype.hasOwnProperty.call(gradeDistribution, audit.grade)) {
+        gradeDistribution[audit.grade] += 1;
+      }
+
+      audit.checks.forEach((check) => {
+        if (check.passed) {
+          return;
+        }
+        const current = failingChecksMap.get(check.id) || {
+          id: check.id,
+          label: check.label,
+          count: 0,
+        };
+        current.count += 1;
+        failingChecksMap.set(check.id, current);
+      });
+    });
+
+    const averageAuditScore = total > 0 ? Number((auditScoreAccumulator / total).toFixed(2)) : 0;
+    const topFailingChecks = Array.from(failingChecksMap.values())
+      .sort((left, right) => {
+        if (left.count === right.count) {
+          return left.label.localeCompare(right.label, "pt-BR", { sensitivity: "base" });
+        }
+        return right.count - left.count;
+      })
+      .slice(0, 5);
+
     return {
       total,
       publicCount,
       privateCount,
       topTags,
       recent,
+      quality: {
+        averageAuditScore,
+        gradeDistribution,
+        topFailingChecks,
+      },
     };
   }
 
@@ -334,6 +374,15 @@ function normalizeIdempotencyKey(value) {
     return "";
   }
   return value.trim();
+}
+
+function createEmptyGradeDistribution() {
+  return {
+    EXCELENTE: 0,
+    CONSISTENTE: 0,
+    ATENCAO: 0,
+    CRITICO: 0,
+  };
 }
 
 module.exports = {

@@ -957,6 +957,25 @@ select {
   gap: 0.64rem;
 }
 
+.cloud-filters {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  padding: 0.66rem;
+  display: grid;
+  gap: 0.62rem;
+}
+
+.cloud-filters .actions {
+  margin-top: 0.08rem;
+}
+
+.cloud-filters__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.58rem;
+}
+
 .cloud-switch input[type="checkbox"] {
   width: 1.04rem;
   height: 1.04rem;
@@ -976,6 +995,59 @@ select {
   padding: 0.62rem;
   display: grid;
   gap: 0.45rem;
+}
+
+.cloud-item__actions .button.is-destructive {
+  border-color: color-mix(in srgb, #c13c42 32%, var(--color-border) 68%);
+  color: color-mix(in srgb, #c13c42 86%, var(--color-text) 14%);
+  background: color-mix(in srgb, #c13c42 12%, transparent);
+}
+
+.cloud-item__actions .button.is-destructive:hover {
+  border-color: color-mix(in srgb, #c13c42 54%, var(--color-border) 46%);
+  background: color-mix(in srgb, #c13c42 18%, transparent);
+}
+
+.cloud-analytics {
+  margin-top: 0.18rem;
+  border-top: 1px dashed var(--color-border);
+  padding-top: 0.74rem;
+  display: grid;
+  gap: 0.52rem;
+}
+
+.cloud-analytics h4 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+}
+
+.cloud-quality-list,
+.cloud-risk-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.32rem;
+}
+
+.cloud-quality-list li,
+.cloud-risk-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+  padding: 0.38rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.cloud-quality-list li strong,
+.cloud-risk-list li strong {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
 }
 
 .contrast-audit-layout {
@@ -1329,6 +1401,10 @@ select:focus-visible,
   .swatch-grid {
     grid-template-columns: 1fr;
   }
+
+  .cloud-filters__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 920px) {
@@ -1380,7 +1456,8 @@ select:focus-visible,
 
   .hero__kpis,
   .contrast-controls,
-  .vision-toolbar {
+  .vision-toolbar,
+  .cloud-filters__grid {
     grid-template-columns: 1fr;
   }
 
