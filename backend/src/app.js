@@ -133,6 +133,7 @@ async function createBackendApp(overrides = {}) {
       healthController,
       authMiddleware: authGuard,
       authorizeRoles,
+      env,
     })
   );
 

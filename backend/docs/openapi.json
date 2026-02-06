@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Paleta ARIA Backend API",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "API REST versionada para autenticação e gerenciamento de paletas de cores."
   },
   "servers": [
@@ -38,6 +38,32 @@
           },
           "requestId": { "type": "string" },
           "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "email": { "type": "string", "format": "email" },
+          "name": { "type": "string" },
+          "role": { "type": "string", "enum": ["user", "admin"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuthTokens": {
+        "type": "object",
+        "properties": {
+          "tokenType": { "type": "string", "example": "Bearer" },
+          "accessToken": { "type": "string" },
+          "refreshToken": { "type": "string" }
+        }
+      },
+      "AuthPayload": {
+        "type": "object",
+        "properties": {
+          "user": { "$ref": "#/components/schemas/UserProfile" },
+          "tokens": { "$ref": "#/components/schemas/AuthTokens" }
         }
       },
       "ColorTokens": {
@@ -77,9 +103,45 @@
         "tags": ["Health"],
         "summary": "Liveness probe",
         "responses": {
-          "200": {
-            "description": "Serviço ativo"
-          }
+          "200": { "description": "Serviço ativo" }
+        }
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Readiness probe",
+        "responses": {
+          "200": { "description": "Serviço pronto" }
+        }
+      }
+    },
+    "/api/v1/health/info": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Informações da aplicação",
+        "responses": {
+          "200": { "description": "Informações retornadas" }
+        }
+      }
+    },
+    "/api/v1/health/metrics": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Métricas operacionais",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Métricas retornadas" },
+          "403": { "description": "Acesso restrito a administradores" }
+        }
+      }
+    },
+    "/api/v1/docs/openapi.json": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Contrato OpenAPI",
+        "responses": {
+          "200": { "description": "Contrato retornado" }
         }
       }
     },
@@ -115,7 +177,74 @@
         "summary": "Login de usuário",
         "responses": {
           "200": { "description": "Autenticado" },
-          "401": { "description": "Credenciais inválidas" }
+          "401": { "description": "Credenciais inválidas" },
+          "429": { "description": "Limite de tentativas de login" }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Rotacionar access/refresh tokens",
+        "responses": {
+          "200": { "description": "Tokens renovados" },
+          "401": { "description": "Refresh token inválido ou revogado" }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Encerrar sessão atual",
+        "responses": {
+          "200": { "description": "Logout realizado" }
+        }
+      }
+    },
+    "/api/v1/auth/logout-all": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Revogar todas as sessões",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Sessões revogadas" }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Perfil do usuário autenticado",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Perfil retornado" },
+          "401": { "description": "Não autenticado" }
+        }
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Alterar senha e revogar sessões anteriores",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["currentPassword", "newPassword"],
+                "properties": {
+                  "currentPassword": { "type": "string", "format": "password" },
+                  "newPassword": { "type": "string", "format": "password" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Senha atualizada" },
+          "401": { "description": "Senha atual inválida" }
         }
       }
     },
@@ -145,6 +274,16 @@
         "security": [{ "bearerAuth": [] }],
         "responses": {
           "201": { "description": "Paleta importada" }
+        }
+      }
+    },
+    "/api/v1/palettes/analytics/summary": {
+      "get": {
+        "tags": ["Palettes"],
+        "summary": "Resumo analítico das paletas do usuário",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Resumo retornado" }
         }
       }
     },
@@ -179,11 +318,30 @@
         "responses": { "200": { "description": "Paleta compartilhada" } }
       }
     },
+    "/api/v1/palettes/{paletteId}/unshare": {
+      "post": {
+        "tags": ["Palettes"],
+        "summary": "Remover compartilhamento público",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Compartilhamento removido" } }
+      }
+    },
     "/api/v1/palettes/public/{shareId}": {
       "get": {
         "tags": ["Palettes"],
         "summary": "Obter paleta pública por shareId",
-        "responses": { "200": { "description": "Paleta pública encontrada" }, "404": { "description": "Não encontrada" } }
+        "parameters": [{ "name": "shareId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Paleta pública encontrada",
+            "headers": {
+              "etag": { "schema": { "type": "string" } },
+              "cache-control": { "schema": { "type": "string" } }
+            }
+          },
+          "304": { "description": "Sem alterações" },
+          "404": { "description": "Não encontrada" }
+        }
       }
     }
   }

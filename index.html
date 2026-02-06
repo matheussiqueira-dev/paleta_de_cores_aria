@@ -84,6 +84,7 @@
         <nav class="main-nav" aria-label="Navegação principal">
           <a href="#laboratorio">Laboratório</a>
           <a href="#biblioteca">Biblioteca</a>
+          <a href="#nuvem">Nuvem</a>
           <a href="#acessibilidade">Contraste</a>
           <a href="#componentes">Componentes</a>
           <a href="#tokens">Tokens</a>
@@ -111,6 +112,7 @@
         <nav aria-label="Navegação móvel">
           <a href="#laboratorio">Laboratório</a>
           <a href="#biblioteca">Biblioteca</a>
+          <a href="#nuvem">Nuvem</a>
           <a href="#acessibilidade">Contraste</a>
           <a href="#componentes">Componentes</a>
           <a href="#tokens">Tokens</a>
@@ -273,6 +275,66 @@
           <button id="clear-saved-palettes" type="button" class="button button--ghost">Limpar biblioteca</button>
         </div>
         <div id="saved-palettes-list" class="saved-palettes" aria-live="polite"></div>
+      </section>
+
+      <section id="nuvem" class="panel">
+        <div class="section-head">
+          <p class="eyebrow">Integração Fullstack</p>
+          <h2>Sincronização com API</h2>
+          <p>Conecte no backend para autenticar, publicar paletas e carregar seu acervo em nuvem.</p>
+        </div>
+
+        <div class="cloud-layout">
+          <article class="cloud-card">
+            <h3>Conexão e sessão</h3>
+            <div class="field">
+              <label for="api-base-url">Base URL da API</label>
+              <input id="api-base-url" type="text" inputmode="url" placeholder="http://localhost:3333" />
+            </div>
+            <div class="actions">
+              <button id="api-save-config" type="button" class="button button--ghost">Salvar endpoint</button>
+            </div>
+
+            <div class="field">
+              <label for="api-auth-name">Nome (cadastro)</label>
+              <input id="api-auth-name" type="text" maxlength="80" autocomplete="name" placeholder="Seu nome" />
+            </div>
+            <div class="field">
+              <label for="api-auth-email">E-mail</label>
+              <input id="api-auth-email" type="text" inputmode="email" autocomplete="email" placeholder="voce@exemplo.com" />
+            </div>
+            <div class="field">
+              <label for="api-auth-password">Senha</label>
+              <input id="api-auth-password" type="password" autocomplete="current-password" placeholder="Senha forte" />
+            </div>
+
+            <div class="actions">
+              <button id="api-register" type="button" class="button button--secondary">Cadastrar</button>
+              <button id="api-login" type="button" class="button button--primary">Entrar</button>
+              <button id="api-logout" type="button" class="button button--ghost">Sair</button>
+            </div>
+
+            <p id="api-session-status" class="cloud-status" aria-live="polite">Sessão desconectada.</p>
+          </article>
+
+          <article class="cloud-card">
+            <h3>Paletas na nuvem</h3>
+            <p class="cloud-helper">Publique a paleta atual e traga versões salvas da API para edição local.</p>
+
+            <div class="field cloud-switch">
+              <label for="api-publish-public">Publicar como paleta pública (gera link)</label>
+              <input id="api-publish-public" type="checkbox" />
+            </div>
+
+            <div class="actions">
+              <button id="api-publish-palette" type="button" class="button button--secondary">Publicar paleta atual</button>
+              <button id="api-sync-palettes" type="button" class="button button--ghost">Sincronizar nuvem</button>
+            </div>
+
+            <p id="api-cloud-summary" class="cloud-summary">Nenhuma paleta sincronizada ainda.</p>
+            <div id="api-cloud-palettes-list" class="cloud-palettes" aria-live="polite"></div>
+          </article>
+        </div>
       </section>
 
       <section id="acessibilidade" class="panel">

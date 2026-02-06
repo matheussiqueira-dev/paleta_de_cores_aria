@@ -1,5 +1,7 @@
 "use strict";
 
+const { createHash } = require("node:crypto");
+
 class PaletteController {
   constructor(paletteService) {
     this.paletteService = paletteService;
@@ -71,6 +73,15 @@ class PaletteController {
 
   publicByShareId = async (req, res) => {
     const result = await this.paletteService.getPublicByShareId(req.params.shareId);
+
+    const etag = buildPublicPaletteETag(result);
+    res.setHeader("cache-control", "public, max-age=60, stale-while-revalidate=120");
+    res.setHeader("etag", etag);
+
+    if (String(req.headers["if-none-match"] || "").trim() === etag) {
+      return res.status(304).end();
+    }
+
     res.status(200).json({
       success: true,
       data: result,
@@ -84,6 +95,17 @@ class PaletteController {
       data: result,
     });
   };
+}
+
+function buildPublicPaletteETag(palette) {
+  const fingerprint = JSON.stringify({
+    id: palette.id,
+    shareId: palette.shareId,
+    updatedAt: palette.updatedAt,
+    tokens: palette.tokens,
+  });
+
+  return `"${createHash("sha1").update(fingerprint).digest("hex")}"`;
 }
 
 module.exports = {

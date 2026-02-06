@@ -2,165 +2,193 @@
 
 ![Preview da interface](docs/preview.png)
 
-## Visão geral do backend
-Este projeto agora inclui um **backend completo e versionado** para o domínio de paletas de cores, com foco em:
-- autenticação segura;
-- gestão de paletas por usuário;
-- compartilhamento público controlado;
-- qualidade operacional (logging, validação, tratamento de erro e testes).
+## Visão geral
+O **Paleta de Cores ARIA** é uma aplicação fullstack para criação, validação e gestão de paletas de cores com foco em:
+- design system e tokens reutilizáveis;
+- acessibilidade (WCAG) em tempo real;
+- colaboração entre frontend e backend via API versionada.
 
-O backend atende ao cenário de produto digital onde usuários criam, editam e compartilham tokens de cor de forma confiável e escalável.
+O produto atende designers e desenvolvedores que precisam criar paletas consistentes, validar contraste e publicar versões em nuvem com segurança.
 
-## Domínio e regras principais
-- Cada usuário autenticado gerencia suas próprias paletas.
-- Uma paleta contém metadados (`name`, `description`, `tags`) e 8 tokens obrigatórios de cor.
-- Paletas podem ser publicadas via `shareId` para consumo público.
-- Tokens seguem validação estrita de cor hexadecimal.
-- Sessões usam JWT com **access token + refresh token** e rotação de refresh.
+## Objetivos de negócio
+- Reduzir retrabalho de design/frontend com tokens padronizados.
+- Aumentar qualidade de acessibilidade desde a fase de definição visual.
+- Permitir histórico local e sincronização com backend para continuidade entre sessões e ambientes.
 
-## Arquitetura adotada
-Backend organizado em arquitetura modular inspirada em Clean Architecture:
+## Arquitetura e decisões técnicas
+### Frontend
+- Aplicação web estática (HTML + CSS + JS) orientada a performance e baixo custo operacional.
+- Estado centralizado no `assets/js/app.js` com persistência local e sincronização com API.
+- UI modular por seções: laboratório, biblioteca local, nuvem/API, contraste, preview e exportação.
 
-- `domain`: constantes e erros de domínio.
-- `application`: casos de uso/regras de negócio (`AuthService`, `PaletteService`).
-- `infrastructure`: persistência, repositórios e segurança (hash/JWT).
-- `interfaces/http`: controllers, schemas, middlewares e rotas.
-- `docs`: contrato OpenAPI.
+### Backend
+- API REST versionada em `\`/api/v1\`` com arquitetura modular inspirada em Clean Architecture:
+  - `domain`: regras e contratos centrais;
+  - `application`: casos de uso e serviços de negócio;
+  - `infrastructure`: persistência, criptografia e JWT;
+  - `interfaces/http`: controllers, middlewares, rotas e validação.
+- Persistência em arquivo JSON com escrita serializada (preparado para troca futura por banco relacional/NoSQL sem quebrar camada HTTP).
 
-Essa separação reduz acoplamento, facilita testes e melhora evolução incremental.
+### Segurança e confiabilidade
+- JWT access + refresh com rotação.
+- Detecção de reuso de refresh token com revogação global de sessões.
+- Alteração de senha com invalidação de sessões anteriores.
+- Validação de entrada com Zod, sanitização, `helmet`, `hpp`, CORS configurável e rate limit global.
+- Rate limit específico para `login`.
+- Observabilidade básica com `requestId`, logs estruturados e métricas.
 
 ## Stack e tecnologias
-- Node.js 20+
-- Express 4
-- Zod (validação de entrada)
-- JWT (`jsonwebtoken`)
-- Bcrypt (`bcryptjs`)
-- Pino (logging estruturado)
-- Helmet, CORS, HPP, Rate Limiter
-- Supertest + Node Test Runner (`node:test`)
-- Persistência em arquivo JSON com escrita serializada
+- **Frontend:** HTML5, CSS3, JavaScript (ES2020+)
+- **Backend:** Node.js 20+, Express 4
+- **Segurança:** `bcryptjs`, `jsonwebtoken`, `helmet`, `hpp`, `cors`, `express-rate-limit`
+- **Validação e utilitários:** `zod`
+- **Logging:** `pino`
+- **Testes:** `node:test`, `supertest`
+- **CI:** GitHub Actions (`.github/workflows/ci.yml`)
 
-## Estrutura do projeto
-```text
-.
-├─ assets/                         # frontend
-├─ docs/                           # screenshot da interface
-├─ backend/
-│  ├─ data/
-│  │  └─ database.json
-│  ├─ docs/
-│  │  └─ openapi.json
-│  ├─ src/
-│  │  ├─ app.js
-│  │  ├─ server.js
-│  │  ├─ config/
-│  │  ├─ domain/
-│  │  ├─ application/
-│  │  ├─ infrastructure/
-│  │  ├─ interfaces/http/
-│  │  └─ utils/
-│  ├─ tests/
-│  ├─ .env.example
-│  └─ package.json
-├─ index.html
-├─ package.json
-└─ README.md
-```
+## Funcionalidades principais
+### Frontend
+- Editor de 8 tokens de cor com presets e geração de harmonia.
+- Undo/redo e biblioteca local de paletas.
+- Importação/exportação JSON e cópia de tokens CSS/JSON.
+- Checker de contraste WCAG AA/AAA em tempo real.
+- Tema claro/escuro/sistema.
+- Nova seção de sincronização com API:
+  - login/cadastro/logout;
+  - publicação de paleta atual na nuvem;
+  - sincronização e aplicação de paletas remotas;
+  - cópia de link público para paletas compartilhadas.
 
-## Endpoints da API
-Base URL local: `http://localhost:3333`
+### Backend
+- Autenticação completa:
+  - `register`, `login`, `refresh`, `logout`, `logout-all`, `me`, `change-password`.
+- Gestão de paletas por usuário:
+  - CRUD, importação, analytics, share/unshare.
+- Endpoint público de paleta por `shareId` com cache (`ETag` + `304`).
+- Health/readiness/info e métricas protegidas por role `admin`.
+- Contrato OpenAPI atualizado em `backend/docs/openapi.json`.
 
-Versionamento: `\`/api/v1\``
+## Endpoints (resumo)
+Base local: `http://localhost:3333`
 
-### Health
 - `GET /api/v1/health/live`
 - `GET /api/v1/health/ready`
 - `GET /api/v1/health/info`
 - `GET /api/v1/health/metrics` (admin)
 - `GET /api/v1/docs/openapi.json`
-
-### Auth
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/refresh`
 - `POST /api/v1/auth/logout`
 - `POST /api/v1/auth/logout-all`
 - `GET /api/v1/auth/me`
-
-### Palettes
-- `GET /api/v1/palettes/public/:shareId` (público)
+- `POST /api/v1/auth/change-password`
+- `GET /api/v1/palettes/public/:shareId`
 - `GET /api/v1/palettes`
-- `GET /api/v1/palettes/:paletteId`
 - `POST /api/v1/palettes`
 - `POST /api/v1/palettes/import`
+- `GET /api/v1/palettes/:paletteId`
 - `PATCH /api/v1/palettes/:paletteId`
 - `DELETE /api/v1/palettes/:paletteId`
 - `POST /api/v1/palettes/:paletteId/share`
 - `POST /api/v1/palettes/:paletteId/unshare`
 - `GET /api/v1/palettes/analytics/summary`
 
+## Estrutura do projeto
+```text
+.
+├─ .github/workflows/ci.yml
+├─ assets/
+│  ├─ css/styles.css
+│  └─ js/app.js
+├─ backend/
+│  ├─ data/database.json
+│  ├─ docs/openapi.json
+│  ├─ src/
+│  │  ├─ application/
+│  │  ├─ config/
+│  │  ├─ domain/
+│  │  ├─ infrastructure/
+│  │  ├─ interfaces/http/
+│  │  ├─ utils/
+│  │  ├─ app.js
+│  │  └─ server.js
+│  ├─ tests/
+│  ├─ .env.example
+│  └─ package.json
+├─ docs/preview.png
+├─ index.html
+├─ package.json
+└─ README.md
+```
+
 ## Setup e execução
-### 1) Frontend
+### Pré-requisitos
+- Node.js 20+
+- npm 10+
+
+### Instalação
 ```bash
 npm install
+npm --prefix backend install
+```
+
+### Rodar frontend (preview estático)
+```bash
 npm run preview
 ```
+Frontend local: `http://localhost:4173`
 
-### 2) Backend
+### Rodar backend
 ```bash
-npm --prefix backend install
 npm --prefix backend run dev
 ```
-
-Servidor backend padrão: `http://localhost:3333`
+Backend local: `http://localhost:3333`
 
 ### Variáveis de ambiente
-Copie `backend/.env.example` e ajuste os valores sensíveis:
+Use `backend/.env.example` como base.
+Campos importantes:
 - `JWT_ACCESS_SECRET`
 - `JWT_REFRESH_SECRET`
 - `CORS_ORIGIN`
 - `DATA_FILE`
-- `ADMIN_BOOTSTRAP_EMAIL` (opcional para bootstrap de usuário admin)
-
-## Segurança e confiabilidade implementadas
-- Senhas com hash `bcrypt`.
-- Access/refresh JWT com rotação e revogação de refresh token.
-- Autorização por usuário dono do recurso + suporte a role (`admin`).
-- Validação de payload, params e query com Zod.
-- Sanitização defensiva de texto e arrays.
-- Helmet, CORS configurável, HPP e rate limit.
-- Tratamento global de exceções com resposta padronizada e `requestId`.
-- Logging estruturado por request com latência e status.
-
-## Performance e escalabilidade
-- Escrita serializada em persistência para evitar corrida em I/O local.
-- Paginação e busca no endpoint de listagem de paletas.
-- Limites de payload e limitação de taxa para reduzir abuso.
-- Arquitetura preparada para troca futura de persistência (DB relacional/NoSQL) sem romper camada HTTP.
+- `ADMIN_BOOTSTRAP_EMAIL`
+- `AUTH_LOGIN_RATE_LIMIT_WINDOW_MS`
+- `AUTH_LOGIN_RATE_LIMIT_MAX`
 
 ## Testes e qualidade
-Scripts:
-- `npm test` (frontend + backend)
-- `npm run backend:test`
-- `npm --prefix backend run test`
+```bash
+npm test
+```
+Cobertura atual inclui:
+- autenticação (registro, login, refresh, logout-all);
+- segurança de sessão (reuso de refresh token);
+- troca de senha;
+- rate limit de login;
+- métricas com autorização por role;
+- fluxo de paletas (CRUD, share, endpoint público e cache condicional).
 
-Cobertura atual:
-- fluxo de autenticação (registro, login, refresh, logout-all);
-- fluxo de paletas (CRUD, share e endpoint público).
+## Boas práticas adotadas
+- separação clara de responsabilidades por camada;
+- contratos HTTP versionados;
+- validação defensiva e respostas padronizadas;
+- acessibilidade e responsividade como requisitos de interface;
+- CI automatizada para regressão rápida.
 
-## Boas práticas e padrões aplicados
-- separação de responsabilidades por camada;
-- princípios DRY e baixo acoplamento entre serviços e transporte HTTP;
-- contratos de API versionados;
-- respostas consistentes (`success`, `data` ou `error`);
-- documentação de contrato OpenAPI disponível no próprio backend.
+## Deploy
+### Frontend
+- pode ser hospedado em GitHub Pages, Vercel ou Netlify.
+
+### Backend
+- pode ser executado em VPS/container com Node.js.
+- recomendado colocar reverse proxy (Nginx/Caddy), TLS e armazenamento persistente.
 
 ## Melhorias futuras
-- migração para banco relacional com índices e auditoria;
-- observabilidade avançada (tracing, métricas Prometheus e dashboards);
-- fila assíncrona para tarefas de processamento de paletas;
-- testes de carga e chaos engineering;
-- CI com lint, segurança SAST e cobertura mínima obrigatória.
+- migração da persistência para PostgreSQL com índices e auditoria.
+- observabilidade avançada (métricas Prometheus + tracing).
+- suporte a times/organizações e colaboração multiusuário.
+- política de RBAC mais granular.
+- testes e2e de interface em pipeline CI.
 
 ---
 

@@ -66,6 +66,13 @@ test("palette flow: CRUD, share e endpoint público", async () => {
     const publicResponse = await api.get(`/api/v1/palettes/public/${shareId}`);
     assert.equal(publicResponse.status, 200);
     assert.equal(publicResponse.body.data.id, paletteId);
+    assert.ok(publicResponse.headers.etag);
+    assert.ok(publicResponse.headers["cache-control"]);
+
+    const conditionalPublicResponse = await api
+      .get(`/api/v1/palettes/public/${shareId}`)
+      .set("if-none-match", publicResponse.headers.etag);
+    assert.equal(conditionalPublicResponse.status, 304);
 
     const updateResponse = await api
       .patch(`/api/v1/palettes/${paletteId}`)

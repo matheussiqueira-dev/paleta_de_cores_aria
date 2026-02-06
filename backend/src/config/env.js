@@ -19,6 +19,8 @@ function resolveEnv(overrides = {}) {
     CORS_ORIGIN: source.CORS_ORIGIN || "*",
     RATE_LIMIT_WINDOW_MS: parseInteger(source.RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
     RATE_LIMIT_MAX: parseInteger(source.RATE_LIMIT_MAX, nodeEnv === "production" ? 120 : 800),
+    AUTH_LOGIN_RATE_LIMIT_WINDOW_MS: parseInteger(source.AUTH_LOGIN_RATE_LIMIT_WINDOW_MS, 10 * 60 * 1000),
+    AUTH_LOGIN_RATE_LIMIT_MAX: parseInteger(source.AUTH_LOGIN_RATE_LIMIT_MAX, nodeEnv === "production" ? 12 : 50),
     JSON_BODY_LIMIT: source.JSON_BODY_LIMIT || "120kb",
     ACCESS_TOKEN_TTL: source.ACCESS_TOKEN_TTL || "15m",
     REFRESH_TOKEN_TTL: source.REFRESH_TOKEN_TTL || "7d",

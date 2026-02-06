@@ -88,6 +88,21 @@ class UserRepository {
 
     return updatedUser;
   }
+
+  async updatePasswordHash(userId, passwordHash) {
+    const updatedUser = await this.database.update((state) => {
+      const user = state.users.find((entry) => entry.id === userId);
+      if (!user) {
+        return null;
+      }
+
+      user.passwordHash = passwordHash;
+      user.updatedAt = new Date().toISOString();
+      return { ...user };
+    });
+
+    return updatedUser;
+  }
 }
 
 module.exports = {

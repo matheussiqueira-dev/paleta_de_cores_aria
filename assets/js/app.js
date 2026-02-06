@@ -5,6 +5,8 @@
     palette: "aria.palette.v2",
     themeMode: "aria.themeMode",
     savedPalettes: "aria.savedPalettes.v1",
+    apiConfig: "aria.api.config.v1",
+    apiSession: "aria.api.session.v1",
   };
 
   const THEME_MODES = ["light", "dark", "system"];
@@ -81,6 +83,14 @@
     },
     savedPalettes: [],
     selectedSavedPaletteId: null,
+    api: {
+      baseUrl: "",
+      accessToken: "",
+      refreshToken: "",
+      user: null,
+      cloudPalettes: [],
+      loadingCloudPalettes: false,
+    },
   };
 
   const swatchCards = {};
@@ -131,14 +141,30 @@
     mobileMenuPanel: document.getElementById("mobile-menu-panel"),
     mobileMenuLinks: Array.from(document.querySelectorAll("#mobile-menu-panel a")),
     navLinks: Array.from(document.querySelectorAll(".main-nav a, #mobile-menu-panel a")),
+    apiBaseUrlInput: document.getElementById("api-base-url"),
+    apiSaveConfigButton: document.getElementById("api-save-config"),
+    apiNameInput: document.getElementById("api-auth-name"),
+    apiEmailInput: document.getElementById("api-auth-email"),
+    apiPasswordInput: document.getElementById("api-auth-password"),
+    apiRegisterButton: document.getElementById("api-register"),
+    apiLoginButton: document.getElementById("api-login"),
+    apiLogoutButton: document.getElementById("api-logout"),
+    apiSessionStatus: document.getElementById("api-session-status"),
+    apiPublishPublicCheckbox: document.getElementById("api-publish-public"),
+    apiPublishPaletteButton: document.getElementById("api-publish-palette"),
+    apiSyncPalettesButton: document.getElementById("api-sync-palettes"),
+    apiCloudSummary: document.getElementById("api-cloud-summary"),
+    apiCloudPalettesList: document.getElementById("api-cloud-palettes-list"),
   };
 
   init();
 
   function init() {
+    state.api.baseUrl = getDefaultApiBaseUrl();
     hydrateStateFromStorage();
     hydrateStateFromQuery();
     hydrateSavedPalettesFromStorage();
+    hydrateApiStateFromStorage();
 
     initializeHistory(state.palette);
     buildSwatchCards();
@@ -153,7 +179,12 @@
     syncPaletteNameInput();
     renderSavedPalettes();
     updateSavedPaletteControls();
+    syncApiInputs();
+    renderCloudPalettes();
+    updateApiSessionStatus();
+    updateApiControls();
     bindSectionTracking();
+    bootstrapApiSession();
   }
 
   function bindEvents() {
@@ -336,6 +367,7 @@
     observeSystemTheme();
     bindKeyboardShortcuts();
     bindMobileMenu();
+    bindCloudEvents();
   }
 
   function bindContrastControls() {
@@ -471,6 +503,692 @@
         setMobileMenuOpen(false);
       }
     });
+  }
+
+  function bindCloudEvents() {
+    if (elements.apiSaveConfigButton && elements.apiBaseUrlInput) {
+      elements.apiSaveConfigButton.addEventListener("click", () => {
+        const normalized = normalizeApiBaseUrl(elements.apiBaseUrlInput.value);
+        if (!normalized) {
+          showToast("Informe uma URL válida para a API.");
+          elements.apiBaseUrlInput.classList.add("is-invalid");
+          return;
+        }
+        elements.apiBaseUrlInput.classList.remove("is-invalid");
+        state.api.baseUrl = normalized;
+        persistApiConfig();
+        syncApiInputs();
+        showToast("Endpoint da API salvo.");
+      });
+    }
+
+    if (elements.apiRegisterButton) {
+      elements.apiRegisterButton.addEventListener("click", async () => {
+        await registerApiUser();
+      });
+    }
+
+    if (elements.apiLoginButton) {
+      elements.apiLoginButton.addEventListener("click", async () => {
+        await loginApiUser();
+      });
+    }
+
+    if (elements.apiLogoutButton) {
+      elements.apiLogoutButton.addEventListener("click", async () => {
+        await logoutApiUser();
+      });
+    }
+
+    if (elements.apiPublishPaletteButton) {
+      elements.apiPublishPaletteButton.addEventListener("click", async () => {
+        await publishCurrentPaletteToCloud();
+      });
+    }
+
+    if (elements.apiSyncPalettesButton) {
+      elements.apiSyncPalettesButton.addEventListener("click", async () => {
+        await syncCloudPalettes();
+      });
+    }
+
+    elements.apiBaseUrlInput?.addEventListener("input", () => {
+      elements.apiBaseUrlInput.classList.remove("is-invalid");
+    });
+
+    [elements.apiEmailInput, elements.apiPasswordInput, elements.apiNameInput].forEach((input) => {
+      input?.addEventListener("keydown", async (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          await loginApiUser();
+        }
+      });
+    });
+  }
+
+  async function bootstrapApiSession() {
+    if (!state.api.refreshToken && !state.api.accessToken) {
+      return;
+    }
+
+    try {
+      await fetchApiProfile();
+      await syncCloudPalettes();
+    } catch (error) {
+      const refreshed = await tryRefreshApiSession();
+      if (refreshed) {
+        await syncCloudPalettes();
+      } else {
+        clearApiSession();
+      }
+    }
+  }
+
+  async function registerApiUser() {
+    const credentials = getApiCredentials({ requireName: true });
+    if (!credentials) {
+      return;
+    }
+
+    try {
+      const authPayload = await apiRequest(
+        "/api/v1/auth/register",
+        {
+          method: "POST",
+          body: credentials,
+        },
+        { auth: false }
+      );
+      applyAuthPayload(authPayload);
+      updateApiSessionStatus();
+      updateApiControls();
+      showToast("Conta criada e sessão iniciada.");
+      await syncCloudPalettes();
+    } catch (error) {
+      showToast(getApiErrorMessage(error, "Falha ao cadastrar na API."));
+    }
+  }
+
+  async function loginApiUser() {
+    const credentials = getApiCredentials({ requireName: false });
+    if (!credentials) {
+      return;
+    }
+
+    try {
+      const authPayload = await apiRequest(
+        "/api/v1/auth/login",
+        {
+          method: "POST",
+          body: {
+            email: credentials.email,
+            password: credentials.password,
+          },
+        },
+        { auth: false }
+      );
+      applyAuthPayload(authPayload);
+      updateApiSessionStatus();
+      updateApiControls();
+      showToast("Login concluído.");
+      await syncCloudPalettes();
+    } catch (error) {
+      showToast(getApiErrorMessage(error, "Falha ao autenticar na API."));
+    }
+  }
+
+  async function logoutApiUser() {
+    try {
+      if (state.api.refreshToken) {
+        await apiRequest(
+          "/api/v1/auth/logout",
+          {
+            method: "POST",
+            body: {
+              refreshToken: state.api.refreshToken,
+            },
+          },
+          { auth: false }
+        );
+      }
+    } catch (error) {
+      // Logout local deve prosseguir mesmo com falha remota.
+    } finally {
+      clearApiSession();
+      updateApiSessionStatus();
+      updateApiControls();
+      renderCloudPalettes();
+      showToast("Sessão encerrada.");
+    }
+  }
+
+  async function fetchApiProfile() {
+    const profile = await apiRequest(
+      "/api/v1/auth/me",
+      {
+        method: "GET",
+      },
+      { auth: true }
+    );
+    state.api.user = profile;
+    persistApiSession();
+    updateApiSessionStatus();
+    updateApiControls();
+    return profile;
+  }
+
+  async function publishCurrentPaletteToCloud() {
+    if (!isApiAuthenticated()) {
+      showToast("Faça login para publicar na nuvem.");
+      return;
+    }
+
+    try {
+      const created = await apiRequest(
+        "/api/v1/palettes",
+        {
+          method: "POST",
+          body: {
+            name: sanitizePaletteName(elements.paletteNameInput?.value || state.paletteName) || "Paleta sem nome",
+            description: "Publicada pelo editor Paleta ARIA.",
+            tags: ["paleta-aria", "web"],
+            tokens: getPaletteSnapshot(state.palette),
+          },
+        },
+        { auth: true }
+      );
+
+      if (elements.apiPublishPublicCheckbox?.checked) {
+        const shared = await apiRequest(
+          `/api/v1/palettes/${created.id}/share`,
+          {
+            method: "POST",
+          },
+          { auth: true }
+        );
+        if (shared?.shareId) {
+          const shareUrl = `${state.api.baseUrl}/api/v1/palettes/public/${shared.shareId}`;
+          copyText(shareUrl, "Link público da paleta copiado.");
+        }
+      }
+
+      showToast("Paleta publicada na nuvem.");
+      await syncCloudPalettes();
+    } catch (error) {
+      showToast(getApiErrorMessage(error, "Falha ao publicar paleta na nuvem."));
+    }
+  }
+
+  async function syncCloudPalettes() {
+    if (!elements.apiCloudPalettesList || !elements.apiCloudSummary) {
+      return;
+    }
+
+    if (!isApiAuthenticated()) {
+      state.api.cloudPalettes = [];
+      renderCloudPalettes();
+      updateApiControls();
+      return;
+    }
+
+    state.api.loadingCloudPalettes = true;
+    updateApiControls();
+    renderCloudPalettes();
+
+    try {
+      const response = await apiRequest(
+        "/api/v1/palettes?limit=30&offset=0",
+        {
+          method: "GET",
+        },
+        { auth: true }
+      );
+      state.api.cloudPalettes = Array.isArray(response?.items) ? response.items : [];
+      renderCloudPalettes();
+    } catch (error) {
+      showToast(getApiErrorMessage(error, "Falha ao sincronizar paletas da nuvem."));
+    } finally {
+      state.api.loadingCloudPalettes = false;
+      updateApiControls();
+      renderCloudPalettes();
+    }
+  }
+
+  function renderCloudPalettes() {
+    if (!elements.apiCloudPalettesList || !elements.apiCloudSummary) {
+      return;
+    }
+
+    elements.apiCloudPalettesList.innerHTML = "";
+
+    if (!isApiAuthenticated()) {
+      elements.apiCloudSummary.textContent = "Faça login para visualizar paletas da nuvem.";
+      const empty = document.createElement("p");
+      empty.className = "cloud-empty";
+      empty.textContent = "Conecte no backend para sincronizar suas paletas.";
+      elements.apiCloudPalettesList.appendChild(empty);
+      return;
+    }
+
+    if (state.api.loadingCloudPalettes) {
+      elements.apiCloudSummary.textContent = "Sincronizando paletas em nuvem...";
+      const loading = document.createElement("p");
+      loading.className = "cloud-empty";
+      loading.textContent = "Buscando dados da API.";
+      elements.apiCloudPalettesList.appendChild(loading);
+      return;
+    }
+
+    if (state.api.cloudPalettes.length === 0) {
+      elements.apiCloudSummary.textContent = "Nenhuma paleta registrada na nuvem.";
+      const empty = document.createElement("p");
+      empty.className = "cloud-empty";
+      empty.textContent = "Publique a paleta atual para começar a sincronização.";
+      elements.apiCloudPalettesList.appendChild(empty);
+      return;
+    }
+
+    elements.apiCloudSummary.textContent = `${state.api.cloudPalettes.length} paleta(s) sincronizada(s) da API.`;
+    const formatter = new Intl.DateTimeFormat("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
+
+    state.api.cloudPalettes.forEach((entry) => {
+      const card = document.createElement("article");
+      card.className = "cloud-item";
+
+      const header = document.createElement("header");
+      header.className = "cloud-item__head";
+
+      const titleWrap = document.createElement("div");
+      const title = document.createElement("h4");
+      title.className = "cloud-item__title";
+      title.textContent = sanitizePaletteName(entry.name) || "Paleta sem nome";
+      const updatedAt = new Date(entry.updatedAt || entry.createdAt || Date.now());
+      const meta = document.createElement("p");
+      meta.className = "cloud-item__meta";
+      meta.textContent = `${entry.isPublic ? "Pública" : "Privada"} • Atualizada em ${
+        Number.isNaN(updatedAt.getTime()) ? String(entry.updatedAt || "") : formatter.format(updatedAt)
+      }`;
+      titleWrap.appendChild(title);
+      titleWrap.appendChild(meta);
+
+      const chips = document.createElement("div");
+      chips.className = "cloud-item__chips";
+      ["primary", "secondary", "accent", "background"].forEach((tokenKey) => {
+        const chip = document.createElement("span");
+        chip.style.background = entry.tokens?.[tokenKey] || DEFAULT_PALETTE[tokenKey];
+        chip.title = `${tokenKey}: ${entry.tokens?.[tokenKey] || "-"}`;
+        chips.appendChild(chip);
+      });
+
+      header.appendChild(titleWrap);
+      header.appendChild(chips);
+
+      const actions = document.createElement("div");
+      actions.className = "cloud-item__actions";
+
+      const applyButton = document.createElement("button");
+      applyButton.type = "button";
+      applyButton.className = "button button--ghost";
+      applyButton.textContent = "Aplicar";
+      applyButton.addEventListener("click", () => {
+        applyCloudPalette(entry);
+      });
+
+      const saveLocalButton = document.createElement("button");
+      saveLocalButton.type = "button";
+      saveLocalButton.className = "button button--ghost";
+      saveLocalButton.textContent = "Salvar local";
+      saveLocalButton.addEventListener("click", () => {
+        saveCloudPaletteToLocal(entry);
+      });
+
+      actions.appendChild(applyButton);
+      actions.appendChild(saveLocalButton);
+
+      if (entry.isPublic && entry.shareId) {
+        const copyPublicLinkButton = document.createElement("button");
+        copyPublicLinkButton.type = "button";
+        copyPublicLinkButton.className = "button button--ghost";
+        copyPublicLinkButton.textContent = "Copiar link";
+        copyPublicLinkButton.addEventListener("click", () => {
+          const publicUrl = `${state.api.baseUrl}/api/v1/palettes/public/${entry.shareId}`;
+          copyText(publicUrl, "Link público copiado.");
+        });
+        actions.appendChild(copyPublicLinkButton);
+      }
+
+      card.appendChild(header);
+      card.appendChild(actions);
+      elements.apiCloudPalettesList.appendChild(card);
+    });
+  }
+
+  function applyCloudPalette(entry) {
+    if (!entry || !entry.tokens) {
+      showToast("Paleta em nuvem inválida.");
+      return;
+    }
+
+    const sanitizedName = sanitizePaletteName(entry.name) || "Paleta em nuvem";
+    state.activePreset = "";
+    state.contrastLinkedToPalette = true;
+    state.selectedSavedPaletteId = null;
+    state.paletteName = sanitizedName;
+    setActivePresetChip("");
+    syncPaletteNameInput();
+    applyPalette(sanitizePalette(entry.tokens, state.palette));
+    renderSavedPalettes();
+    updateSavedPaletteControls();
+    showToast(`Paleta "${sanitizedName}" aplicada da nuvem.`);
+  }
+
+  function saveCloudPaletteToLocal(entry) {
+    if (!entry || !entry.tokens) {
+      return;
+    }
+    const now = new Date().toISOString();
+    const localEntry = {
+      id: createLocalId(),
+      name: sanitizePaletteName(entry.name) || `Paleta ${state.savedPalettes.length + 1}`,
+      palette: sanitizePalette(entry.tokens, DEFAULT_PALETTE),
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    state.savedPalettes = [localEntry, ...state.savedPalettes].slice(0, 30);
+    state.selectedSavedPaletteId = localEntry.id;
+    state.paletteName = localEntry.name;
+    persistSavedPalettes();
+    syncPaletteNameInput();
+    renderSavedPalettes();
+    updateSavedPaletteControls();
+    showToast("Paleta da nuvem salva na biblioteca local.");
+  }
+
+  function getApiCredentials(options = {}) {
+    const requireName = Boolean(options.requireName);
+    const email = String(elements.apiEmailInput?.value || "")
+      .trim()
+      .toLowerCase();
+    const password = String(elements.apiPasswordInput?.value || "");
+    const name = sanitizePaletteName(elements.apiNameInput?.value || "");
+
+    let hasError = false;
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      elements.apiEmailInput?.classList.add("is-invalid");
+      hasError = true;
+    } else {
+      elements.apiEmailInput?.classList.remove("is-invalid");
+    }
+
+    if (!password || password.length < 8) {
+      elements.apiPasswordInput?.classList.add("is-invalid");
+      hasError = true;
+    } else {
+      elements.apiPasswordInput?.classList.remove("is-invalid");
+    }
+
+    if (requireName) {
+      if (!name || name.length < 2) {
+        elements.apiNameInput?.classList.add("is-invalid");
+        hasError = true;
+      } else {
+        elements.apiNameInput?.classList.remove("is-invalid");
+      }
+    }
+
+    if (hasError) {
+      showToast("Revise nome, e-mail e senha para continuar.");
+      return null;
+    }
+
+    return {
+      name,
+      email,
+      password,
+    };
+  }
+
+  async function apiRequest(path, options = {}, settings = {}) {
+    const baseUrl = normalizeApiBaseUrl(state.api.baseUrl);
+    if (!baseUrl) {
+      throw new Error("Configure uma URL válida da API.");
+    }
+
+    const method = (options.method || "GET").toUpperCase();
+    const headers = new Headers(options.headers || {});
+    if (options.body && !headers.has("content-type")) {
+      headers.set("content-type", "application/json");
+    }
+    if (settings.auth && state.api.accessToken) {
+      headers.set("authorization", `Bearer ${state.api.accessToken}`);
+    }
+
+    const response = await fetch(`${baseUrl}${path}`, {
+      method,
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+
+    if (response.status === 401 && settings.auth && !settings.retry && state.api.refreshToken) {
+      const refreshed = await tryRefreshApiSession();
+      if (refreshed) {
+        return apiRequest(path, options, { ...settings, retry: true });
+      }
+    }
+
+    if (response.status === 204) {
+      return null;
+    }
+
+    const payload = await readResponsePayload(response);
+    if (!response.ok) {
+      throw buildApiError(payload, response.status);
+    }
+
+    return payload?.data ?? null;
+  }
+
+  async function tryRefreshApiSession() {
+    if (!state.api.refreshToken) {
+      return false;
+    }
+
+    try {
+      const payload = await apiRequest(
+        "/api/v1/auth/refresh",
+        {
+          method: "POST",
+          body: {
+            refreshToken: state.api.refreshToken,
+          },
+        },
+        { auth: false, retry: true }
+      );
+      applyAuthPayload(payload);
+      updateApiSessionStatus();
+      updateApiControls();
+      return true;
+    } catch (error) {
+      clearApiSession();
+      updateApiSessionStatus();
+      updateApiControls();
+      renderCloudPalettes();
+      return false;
+    }
+  }
+
+  async function readResponsePayload(response) {
+    const contentType = String(response.headers.get("content-type") || "");
+    if (contentType.includes("application/json")) {
+      try {
+        return await response.json();
+      } catch (error) {
+        return null;
+      }
+    }
+
+    try {
+      const text = await response.text();
+      return text ? { raw: text } : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function buildApiError(payload, status) {
+    const error = new Error(payload?.error?.message || "Falha na comunicação com a API.");
+    error.status = status;
+    error.code = payload?.error?.code || "API_ERROR";
+    return error;
+  }
+
+  function getApiErrorMessage(error, fallbackMessage) {
+    if (error && typeof error.message === "string" && error.message.trim().length > 0) {
+      return error.message.trim();
+    }
+    return fallbackMessage;
+  }
+
+  function applyAuthPayload(payload) {
+    state.api.user = payload?.user || null;
+    state.api.accessToken = String(payload?.tokens?.accessToken || "");
+    state.api.refreshToken = String(payload?.tokens?.refreshToken || "");
+    persistApiSession();
+    updateApiSessionStatus();
+    updateApiControls();
+  }
+
+  function clearApiSession() {
+    state.api.user = null;
+    state.api.accessToken = "";
+    state.api.refreshToken = "";
+    state.api.cloudPalettes = [];
+    state.api.loadingCloudPalettes = false;
+    persistApiSession();
+  }
+
+  function hydrateApiStateFromStorage() {
+    const configRaw = safeStorageGet(STORAGE_KEYS.apiConfig);
+    if (configRaw) {
+      try {
+        const parsedConfig = JSON.parse(configRaw);
+        const normalizedUrl = normalizeApiBaseUrl(parsedConfig?.baseUrl);
+        if (normalizedUrl) {
+          state.api.baseUrl = normalizedUrl;
+        }
+      } catch (error) {
+        // Ignora config inválida.
+      }
+    }
+
+    const sessionRaw = safeStorageGet(STORAGE_KEYS.apiSession);
+    if (sessionRaw) {
+      try {
+        const parsedSession = JSON.parse(sessionRaw);
+        state.api.accessToken = String(parsedSession?.accessToken || "");
+        state.api.refreshToken = String(parsedSession?.refreshToken || "");
+        state.api.user = parsedSession?.user && typeof parsedSession.user === "object" ? parsedSession.user : null;
+      } catch (error) {
+        clearApiSession();
+      }
+    }
+  }
+
+  function persistApiConfig() {
+    safeStorageSet(
+      STORAGE_KEYS.apiConfig,
+      JSON.stringify({
+        baseUrl: state.api.baseUrl,
+      })
+    );
+  }
+
+  function persistApiSession() {
+    safeStorageSet(
+      STORAGE_KEYS.apiSession,
+      JSON.stringify({
+        accessToken: state.api.accessToken,
+        refreshToken: state.api.refreshToken,
+        user: state.api.user,
+      })
+    );
+  }
+
+  function syncApiInputs() {
+    if (!elements.apiBaseUrlInput) {
+      return;
+    }
+    elements.apiBaseUrlInput.value = state.api.baseUrl;
+  }
+
+  function updateApiSessionStatus() {
+    if (!elements.apiSessionStatus) {
+      return;
+    }
+
+    const isConnected = Boolean(state.api.user && state.api.accessToken);
+    elements.apiSessionStatus.classList.toggle("is-connected", isConnected);
+    if (isConnected) {
+      const name = sanitizePaletteName(state.api.user?.name || "");
+      const email = String(state.api.user?.email || "").trim();
+      const role = String(state.api.user?.role || "user").toUpperCase();
+      elements.apiSessionStatus.textContent = `Conectado como ${name || email} (${role})`;
+      return;
+    }
+    elements.apiSessionStatus.textContent = "Sessão desconectada.";
+  }
+
+  function updateApiControls() {
+    const isConnected = isApiAuthenticated();
+    const isLoading = state.api.loadingCloudPalettes;
+
+    if (elements.apiPublishPaletteButton) {
+      elements.apiPublishPaletteButton.disabled = !isConnected || isLoading;
+      elements.apiPublishPaletteButton.setAttribute("aria-disabled", String(elements.apiPublishPaletteButton.disabled));
+    }
+    if (elements.apiSyncPalettesButton) {
+      elements.apiSyncPalettesButton.disabled = !isConnected || isLoading;
+      elements.apiSyncPalettesButton.setAttribute("aria-disabled", String(elements.apiSyncPalettesButton.disabled));
+    }
+    if (elements.apiLogoutButton) {
+      elements.apiLogoutButton.disabled = !isConnected;
+      elements.apiLogoutButton.setAttribute("aria-disabled", String(elements.apiLogoutButton.disabled));
+    }
+  }
+
+  function isApiAuthenticated() {
+    return Boolean(state.api.user && state.api.accessToken);
+  }
+
+  function normalizeApiBaseUrl(value) {
+    const fallback = getDefaultApiBaseUrl();
+    const candidate = String(value || "").trim() || fallback;
+
+    try {
+      const url = new URL(candidate);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        return null;
+      }
+      return url.toString().replace(/\/+$/, "");
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function getDefaultApiBaseUrl() {
+    if (window.location.protocol === "http:" || window.location.protocol === "https:") {
+      const hostname = window.location.hostname;
+      if (hostname === "localhost" || hostname === "127.0.0.1") {
+        return `${window.location.protocol}//${hostname}:3333`;
+      }
+      return window.location.origin;
+    }
+    return "http://localhost:3333";
   }
 
   function isMobileMenuOpen() {

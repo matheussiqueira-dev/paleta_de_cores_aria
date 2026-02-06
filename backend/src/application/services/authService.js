@@ -92,9 +92,10 @@ class AuthService {
 
     const refreshTokenHash = this.tokenService.hashRefreshToken(refreshToken);
     if (!user.refreshTokenHashes || !user.refreshTokenHashes.includes(refreshTokenHash)) {
+      await this.userRepository.clearRefreshTokenHashes(user.id);
       throw new AppError("Refresh token expirado ou revogado.", {
         statusCode: 401,
-        code: "REFRESH_TOKEN_REVOKED",
+        code: "REFRESH_TOKEN_REUSE_DETECTED",
       });
     }
 
@@ -133,6 +134,45 @@ class AuthService {
     }
 
     return this.#serializeUser(user);
+  }
+
+  async changePassword(userId, payload) {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new AppError("Usuário não encontrado.", {
+        statusCode: 404,
+        code: "USER_NOT_FOUND",
+      });
+    }
+
+    const isCurrentPasswordValid = await this.passwordHasher.verify(payload.currentPassword, user.passwordHash);
+    if (!isCurrentPasswordValid) {
+      throw new AppError("Senha atual inválida.", {
+        statusCode: 401,
+        code: "INVALID_CURRENT_PASSWORD",
+      });
+    }
+
+    const isSamePassword = await this.passwordHasher.verify(payload.newPassword, user.passwordHash);
+    if (isSamePassword) {
+      throw new AppError("A nova senha precisa ser diferente da senha atual.", {
+        statusCode: 400,
+        code: "PASSWORD_MUST_DIFFER",
+      });
+    }
+
+    const passwordHash = await this.passwordHasher.hash(payload.newPassword);
+    const updatedUser = await this.userRepository.updatePasswordHash(userId, passwordHash);
+    if (!updatedUser) {
+      throw new AppError("Usuário não encontrado.", {
+        statusCode: 404,
+        code: "USER_NOT_FOUND",
+      });
+    }
+
+    await this.userRepository.clearRefreshTokenHashes(userId);
+    this.logger.info({ userId }, "User changed password and sessions were revoked.");
+    return this.#issueTokens(updatedUser);
   }
 
   async #issueTokens(user) {

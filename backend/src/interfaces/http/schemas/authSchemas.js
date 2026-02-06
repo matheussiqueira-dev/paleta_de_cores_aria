@@ -30,9 +30,15 @@ const logoutBodySchema = z.object({
   refreshToken: z.string().min(10).optional(),
 });
 
+const changePasswordBodySchema = z.object({
+  currentPassword: z.string().min(1).max(120),
+  newPassword: passwordSchema,
+});
+
 module.exports = {
   registerBodySchema,
   loginBodySchema,
   refreshBodySchema,
   logoutBodySchema,
+  changePasswordBodySchema,
 };
