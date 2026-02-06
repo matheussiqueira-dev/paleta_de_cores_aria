@@ -1,0 +1,19 @@
+{
+  "name": "paleta_de_cores_aria",
+  "version": "1.0.0",
+  "description": "Laboratório de paletas de cores com acessibilidade WCAG, exportação de tokens e preview de UI.",
+  "main": "index.html",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "node --check assets/js/app.js",
+    "preview": "npx --yes http-server . -p 4173 -c-1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "playwright": "^1.47.2"
+  }
+}

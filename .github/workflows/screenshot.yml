@@ -1,0 +1,62 @@
+name: Capture Screenshot
+
+on:
+  workflow_run:
+    workflows: ["Deploy GitHub Pages"]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shot:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright (Chromium)
+        run: |
+          npx --yes playwright@1.47.2 install --with-deps chromium
+
+      - name: Wait for Pages to be available
+        env:
+          TARGET_URL: https://matheussiqueira-dev.github.io/paleta_de_cores_aria/
+        run: |
+          echo "Waiting for $TARGET_URL ..."
+          for i in {1..30}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$TARGET_URL") || true
+            echo "Attempt $i => HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 3
+          done
+          echo "Site not reachable with 200 after retries" >&2
+          exit 1
+
+      - name: Capture screenshot
+        env:
+          TARGET_URL: https://matheussiqueira-dev.github.io/paleta_de_cores_aria/
+        run: |
+          mkdir -p docs
+          npx --yes playwright@1.47.2 screenshot \
+            --wait-for-timeout=1500 \
+            --viewport-size=1366,800 \
+            --full-page \
+            --timeout=180000 \
+            "$TARGET_URL" \
+            docs/preview.png
+
+      - name: Commit screenshot
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: add/update screenshot preview.png"
+          branch: main
+          file_pattern: docs/preview.png
