@@ -1,0 +1,190 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Paleta ARIA Backend API",
+    "version": "1.0.0",
+    "description": "API REST versionada para autenticação e gerenciamento de paletas de cores."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3333",
+      "description": "Servidor local"
+    }
+  ],
+  "tags": [
+    { "name": "Health" },
+    { "name": "Auth" },
+    { "name": "Palettes" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string", "example": "VALIDATION_ERROR" },
+              "message": { "type": "string" }
+            }
+          },
+          "requestId": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ColorTokens": {
+        "type": "object",
+        "required": ["primary", "secondary", "accent", "background", "surface", "text", "muted", "border"],
+        "properties": {
+          "primary": { "type": "string", "example": "#2F6FED" },
+          "secondary": { "type": "string", "example": "#13B89E" },
+          "accent": { "type": "string", "example": "#F26D3D" },
+          "background": { "type": "string", "example": "#F3F7FF" },
+          "surface": { "type": "string", "example": "#FFFFFF" },
+          "text": { "type": "string", "example": "#172033" },
+          "muted": { "type": "string", "example": "#5A657C" },
+          "border": { "type": "string", "example": "#D9E3F5" }
+        }
+      },
+      "Palette": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "ownerId": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "tokens": { "$ref": "#/components/schemas/ColorTokens" },
+          "isPublic": { "type": "boolean" },
+          "shareId": { "type": ["string", "null"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/health/live": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Liveness probe",
+        "responses": {
+          "200": {
+            "description": "Serviço ativo"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Registrar usuário",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "format": "password" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Usuário registrado" },
+          "409": { "description": "Email já existe" }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login de usuário",
+        "responses": {
+          "200": { "description": "Autenticado" },
+          "401": { "description": "Credenciais inválidas" }
+        }
+      }
+    },
+    "/api/v1/palettes": {
+      "get": {
+        "tags": ["Palettes"],
+        "summary": "Listar paletas do usuário",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Lista retornada" },
+          "401": { "description": "Não autenticado" }
+        }
+      },
+      "post": {
+        "tags": ["Palettes"],
+        "summary": "Criar nova paleta",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": { "description": "Paleta criada" }
+        }
+      }
+    },
+    "/api/v1/palettes/import": {
+      "post": {
+        "tags": ["Palettes"],
+        "summary": "Importar paleta",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": { "description": "Paleta importada" }
+        }
+      }
+    },
+    "/api/v1/palettes/{paletteId}": {
+      "get": {
+        "tags": ["Palettes"],
+        "summary": "Obter paleta por ID",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "paletteId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "Paleta encontrada" }, "404": { "description": "Paleta não encontrada" } }
+      },
+      "patch": {
+        "tags": ["Palettes"],
+        "summary": "Atualizar paleta",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "paletteId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "Paleta atualizada" } }
+      },
+      "delete": {
+        "tags": ["Palettes"],
+        "summary": "Excluir paleta",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "paletteId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "Paleta removida" } }
+      }
+    },
+    "/api/v1/palettes/{paletteId}/share": {
+      "post": {
+        "tags": ["Palettes"],
+        "summary": "Publicar paleta e gerar shareId",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Paleta compartilhada" } }
+      }
+    },
+    "/api/v1/palettes/public/{shareId}": {
+      "get": {
+        "tags": ["Palettes"],
+        "summary": "Obter paleta pública por shareId",
+        "responses": { "200": { "description": "Paleta pública encontrada" }, "404": { "description": "Não encontrada" } }
+      }
+    }
+  }
+}

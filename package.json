@@ -7,8 +7,13 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "node --check assets/js/app.js",
-    "preview": "npx --yes http-server . -p 4173 -c-1"
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "node --check assets/js/app.js",
+    "test:backend": "npm --prefix backend run test",
+    "preview": "npx --yes http-server . -p 4173 -c-1",
+    "backend:dev": "npm --prefix backend run dev",
+    "backend:start": "npm --prefix backend run start",
+    "backend:test": "npm --prefix backend run test"
   },
   "keywords": [],
   "author": "",

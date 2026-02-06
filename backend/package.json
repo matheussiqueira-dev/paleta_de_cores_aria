@@ -1,0 +1,41 @@
+{
+  "name": "paleta-aria-backend",
+  "version": "1.0.0",
+  "description": "API backend do Paleta de Cores ARIA com autenticação, gestão de paletas e segurança em nível de produção.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "test:auth": "node --test tests/auth-api.test.js",
+    "test:palettes": "node --test tests/palettes-api.test.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "api",
+    "express",
+    "jwt",
+    "backend",
+    "clean-architecture"
+  ],
+  "author": "Matheus Siqueira",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.4.1",
+    "helmet": "^8.0.0",
+    "hpp": "^0.2.3",
+    "jsonwebtoken": "^9.0.2",
+    "pino": "^9.5.0",
+    "pino-http": "^10.3.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0"
+  }
+}

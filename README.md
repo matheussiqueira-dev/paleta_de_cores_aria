@@ -2,152 +2,165 @@
 
 ![Preview da interface](docs/preview.png)
 
-## Visão geral do frontend
-O **Paleta de Cores ARIA** é um laboratório visual para criação, validação e gestão de paletas de cores com foco em:
-- qualidade de interface (UI moderna e consistente);
-- usabilidade real para fluxos de design;
-- acessibilidade com critérios WCAG;
-- exportação prática de tokens para implementação em produto.
+## Visão geral do backend
+Este projeto agora inclui um **backend completo e versionado** para o domínio de paletas de cores, com foco em:
+- autenticação segura;
+- gestão de paletas por usuário;
+- compartilhamento público controlado;
+- qualidade operacional (logging, validação, tratamento de erro e testes).
 
-### Propósito do produto
-Reduzir fricção entre design e desenvolvimento, permitindo que equipes definam, testem e compartilhem paletas de forma rápida, com feedback técnico de contraste e preview de componentes.
+O backend atende ao cenário de produto digital onde usuários criam, editam e compartilham tokens de cor de forma confiável e escalável.
 
-### Público-alvo
-- Designers de produto e UI;
-- Desenvolvedores frontend;
-- Times de produto e branding;
-- Profissionais/estudantes em design systems.
+## Domínio e regras principais
+- Cada usuário autenticado gerencia suas próprias paletas.
+- Uma paleta contém metadados (`name`, `description`, `tags`) e 8 tokens obrigatórios de cor.
+- Paletas podem ser publicadas via `shareId` para consumo público.
+- Tokens seguem validação estrita de cor hexadecimal.
+- Sessões usam JWT com **access token + refresh token** e rotação de refresh.
 
-## Análise técnica
+## Arquitetura adotada
+Backend organizado em arquitetura modular inspirada em Clean Architecture:
 
-### Arquitetura frontend
-Projeto estático, sem framework, com responsabilidades bem separadas:
-- `index.html`: semântica, estrutura, SEO e pontos de ancoragem da aplicação.
-- `assets/css/styles.css`: design system visual, layout responsivo e estados.
-- `assets/js/app.js`: estado, regras de negócio, eventos e renderização dinâmica.
+- `domain`: constantes e erros de domínio.
+- `application`: casos de uso/regras de negócio (`AuthService`, `PaletteService`).
+- `infrastructure`: persistência, repositórios e segurança (hash/JWT).
+- `interfaces/http`: controllers, schemas, middlewares e rotas.
+- `docs`: contrato OpenAPI.
 
-### Estado e escalabilidade
-- Estado único centralizado (`palette`, `contrast`, `themeMode`, `history`, `savedPalettes`).
-- Metadados declarativos (`TOKEN_META`, `PRESETS`) para reduzir duplicação.
-- Persistência em `localStorage` com fallback seguro.
-- Camada de utilitários para cor/contraste e serialização de estado compartilhável.
-
-### Performance
-- Carregamento leve (HTML/CSS/JS puro, sem runtime pesado).
-- Script principal com `defer`.
-- Renderização incremental para grid de swatches e biblioteca local.
-- Atualizações visuais via CSS custom properties (baixo custo de repaint).
-
-### SEO
-- `title`, `description`, `canonical`, Open Graph e Twitter Cards.
-- JSON-LD (`WebApplication`) para metadados estruturados.
-
-### Acessibilidade e usabilidade
-- Skip link.
-- Foco visível consistente.
-- Feedback de status com `aria-live`.
-- Checker WCAG AA/AAA em tempo real.
-- Navegação mobile acessível (menu colapsável + fechamento por teclado/click externo).
-- Respeito a `prefers-reduced-motion`.
-
-## UI/UX e Design System
-
-### Melhorias de UX implementadas
-- Jornada principal simplificada: editar tokens → validar contraste → testar preview → salvar/exportar.
-- Navegação contextual com destaque da seção ativa.
-- Biblioteca local de paletas para comparação e iteração.
-- Ações de produtividade:
-  - desfazer/refazer (botões + atalhos);
-  - importação de JSON;
-  - cópia/download de tokens.
-
-### Sistema visual
-- Tokens de cor e tipografia definidos em CSS custom properties.
-- Componentes reutilizáveis:
-  - botões (`primary`, `secondary`, `ghost`);
-  - chips/presets;
-  - cards (swatches e biblioteca);
-  - toast de feedback;
-  - estados (hover, focus, disabled, active).
-
-## Funcionalidades principais
-- Editor de paleta com 8 tokens (`primary`, `secondary`, `accent`, `background`, `surface`, `text`, `muted`, `border`).
-- Presets prontos para aceleração de fluxo.
-- Geração automática de harmonia por cor primária.
-- Verificação de contraste WCAG (AA/AAA para texto normal e grande).
-- Preview de componentes com aplicação dos tokens.
-- Exportação para CSS vars e JSON.
-- Importação de JSON de tokens.
-- Link compartilhável com estado serializado.
-- Biblioteca local de paletas:
-  - salvar;
-  - aplicar;
-  - atualizar;
-  - excluir;
-  - limpar biblioteca.
+Essa separação reduz acoplamento, facilita testes e melhora evolução incremental.
 
 ## Stack e tecnologias
-- HTML5
-- CSS3 (Custom Properties / Design Tokens)
-- JavaScript ES2020+
-- Playwright (workflow de screenshot / validação visual)
-- GitHub Actions + GitHub Pages
+- Node.js 20+
+- Express 4
+- Zod (validação de entrada)
+- JWT (`jsonwebtoken`)
+- Bcrypt (`bcryptjs`)
+- Pino (logging estruturado)
+- Helmet, CORS, HPP, Rate Limiter
+- Supertest + Node Test Runner (`node:test`)
+- Persistência em arquivo JSON com escrita serializada
 
 ## Estrutura do projeto
 ```text
-paleta_de_cores_aria-main/
-├─ .github/
-│  └─ workflows/
-│     ├─ pages.yml
-│     └─ screenshot.yml
-├─ assets/
-│  ├─ css/
-│  │  └─ styles.css
-│  └─ js/
-│     └─ app.js
-├─ docs/
-│  └─ preview.png
-├─ favicon-dark.svg
-├─ favicon-light.svg
+.
+├─ assets/                         # frontend
+├─ docs/                           # screenshot da interface
+├─ backend/
+│  ├─ data/
+│  │  └─ database.json
+│  ├─ docs/
+│  │  └─ openapi.json
+│  ├─ src/
+│  │  ├─ app.js
+│  │  ├─ server.js
+│  │  ├─ config/
+│  │  ├─ domain/
+│  │  ├─ application/
+│  │  ├─ infrastructure/
+│  │  ├─ interfaces/http/
+│  │  └─ utils/
+│  ├─ tests/
+│  ├─ .env.example
+│  └─ package.json
 ├─ index.html
 ├─ package.json
 └─ README.md
 ```
 
-## Instalação e execução
-1. Clone o repositório:
-   ```bash
-   git clone https://github.com/matheussiqueira-dev/paleta_de_cores_aria.git
-   cd paleta_de_cores_aria
-   ```
-2. Instale dependências:
-   ```bash
-   npm install
-   ```
-3. Execute localmente:
-   ```bash
-   npm run preview
-   ```
-4. Acesse:
-   - `http://localhost:4173`
+## Endpoints da API
+Base URL local: `http://localhost:3333`
 
-## Scripts disponíveis
-- `npm test`: valida sintaxe do JavaScript (`node --check assets/js/app.js`).
-- `npm run preview`: sobe servidor estático local para desenvolvimento rápido.
+Versionamento: `\`/api/v1\``
 
-## Boas práticas adotadas
-- Separação de responsabilidades entre marcação, estilo e lógica.
-- Estrutura orientada a reuso com design tokens.
-- Tratamento defensivo de `localStorage` e clipboard.
-- Fluxos com feedback imediato e acessível.
-- Componentes com estados explícitos para previsibilidade de UX.
+### Health
+- `GET /api/v1/health/live`
+- `GET /api/v1/health/ready`
+- `GET /api/v1/health/info`
+- `GET /api/v1/health/metrics` (admin)
+- `GET /api/v1/docs/openapi.json`
+
+### Auth
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/logout-all`
+- `GET /api/v1/auth/me`
+
+### Palettes
+- `GET /api/v1/palettes/public/:shareId` (público)
+- `GET /api/v1/palettes`
+- `GET /api/v1/palettes/:paletteId`
+- `POST /api/v1/palettes`
+- `POST /api/v1/palettes/import`
+- `PATCH /api/v1/palettes/:paletteId`
+- `DELETE /api/v1/palettes/:paletteId`
+- `POST /api/v1/palettes/:paletteId/share`
+- `POST /api/v1/palettes/:paletteId/unshare`
+- `GET /api/v1/palettes/analytics/summary`
+
+## Setup e execução
+### 1) Frontend
+```bash
+npm install
+npm run preview
+```
+
+### 2) Backend
+```bash
+npm --prefix backend install
+npm --prefix backend run dev
+```
+
+Servidor backend padrão: `http://localhost:3333`
+
+### Variáveis de ambiente
+Copie `backend/.env.example` e ajuste os valores sensíveis:
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `CORS_ORIGIN`
+- `DATA_FILE`
+- `ADMIN_BOOTSTRAP_EMAIL` (opcional para bootstrap de usuário admin)
+
+## Segurança e confiabilidade implementadas
+- Senhas com hash `bcrypt`.
+- Access/refresh JWT com rotação e revogação de refresh token.
+- Autorização por usuário dono do recurso + suporte a role (`admin`).
+- Validação de payload, params e query com Zod.
+- Sanitização defensiva de texto e arrays.
+- Helmet, CORS configurável, HPP e rate limit.
+- Tratamento global de exceções com resposta padronizada e `requestId`.
+- Logging estruturado por request com latência e status.
+
+## Performance e escalabilidade
+- Escrita serializada em persistência para evitar corrida em I/O local.
+- Paginação e busca no endpoint de listagem de paletas.
+- Limites de payload e limitação de taxa para reduzir abuso.
+- Arquitetura preparada para troca futura de persistência (DB relacional/NoSQL) sem romper camada HTTP.
+
+## Testes e qualidade
+Scripts:
+- `npm test` (frontend + backend)
+- `npm run backend:test`
+- `npm --prefix backend run test`
+
+Cobertura atual:
+- fluxo de autenticação (registro, login, refresh, logout-all);
+- fluxo de paletas (CRUD, share e endpoint público).
+
+## Boas práticas e padrões aplicados
+- separação de responsabilidades por camada;
+- princípios DRY e baixo acoplamento entre serviços e transporte HTTP;
+- contratos de API versionados;
+- respostas consistentes (`success`, `data` ou `error`);
+- documentação de contrato OpenAPI disponível no próprio backend.
 
 ## Melhorias futuras
-- Exportação em padrão W3C Design Tokens.
-- Importação de formatos de ferramentas de design (Figma Tokens, Style Dictionary).
-- Testes E2E automatizados no CI para fluxos críticos (save/import/share).
-- Modo colaboração com múltiplas coleções de paleta.
-- Auditoria automatizada de acessibilidade em pipeline.
+- migração para banco relacional com índices e auditoria;
+- observabilidade avançada (tracing, métricas Prometheus e dashboards);
+- fila assíncrona para tarefas de processamento de paletas;
+- testes de carga e chaos engineering;
+- CI com lint, segurança SAST e cobertura mínima obrigatória.
 
 ---
 
