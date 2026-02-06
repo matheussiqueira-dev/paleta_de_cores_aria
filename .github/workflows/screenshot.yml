@@ -25,7 +25,7 @@ jobs:
 
       - name: Install Playwright (Chromium)
         run: |
-          npx --yes playwright@1.47.2 install --with-deps chromium
+          npx --yes playwright@1.55.1 install --with-deps chromium
 
       - name: Wait for Pages to be available
         env:
@@ -46,7 +46,7 @@ jobs:
           TARGET_URL: https://matheussiqueira-dev.github.io/paleta_de_cores_aria/
         run: |
           mkdir -p docs
-          npx --yes playwright@1.47.2 screenshot \
+          npx --yes playwright@1.55.1 screenshot \
             --wait-for-timeout=1500 \
             --viewport-size=1366,800 \
             --full-page \
