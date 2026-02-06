@@ -7,9 +7,9 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "test": "node --test \"tests/**/*.test.js\"",
-    "test:auth": "node --test tests/auth-api.test.js",
-    "test:palettes": "node --test tests/palettes-api.test.js"
+    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
+    "test:auth": "node --test --test-concurrency=1 tests/auth-api.test.js",
+    "test:palettes": "node --test --test-concurrency=1 tests/palettes-api.test.js"
   },
   "engines": {
     "node": ">=20.0.0"

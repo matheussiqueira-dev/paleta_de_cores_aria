@@ -15,12 +15,14 @@ const DEFAULT_STATE = Object.freeze({
 });
 
 class FileDatabase {
-  constructor(filePath, logger) {
+  constructor(filePath, logger, options = {}) {
     this.filePath = filePath;
     this.logger = logger;
     this.state = null;
     this.initialized = false;
     this.writeQueue = Promise.resolve();
+    this.maxFlushRetries = normalizePositiveInteger(options.maxFlushRetries, 5);
+    this.flushRetryDelayMs = normalizePositiveInteger(options.flushRetryDelayMs, 25);
   }
 
   async init() {
@@ -40,7 +42,7 @@ class FileDatabase {
         this.logger.warn({ err: error, brokenFilePath }, "Invalid database file, recreated with defaults.");
       }
       this.state = this.#createDefaultState();
-      await this.#flushToDisk();
+      await this.#flushToDisk(this.state);
     }
 
     this.initialized = true;
@@ -60,25 +62,53 @@ class FileDatabase {
         const draft = this.#cloneState(this.state);
         const result = await mutator(draft);
         draft.metadata.generatedAt = new Date().toISOString();
+        await this.#flushToDisk(draft);
         this.state = draft;
-        await this.#flushToDisk();
         return result;
       });
 
     return this.writeQueue;
   }
 
-  async #flushToDisk() {
-    const payload = JSON.stringify(this.state, null, 2);
+  async #flushToDisk(nextState) {
+    const payload = JSON.stringify(nextState, null, 2);
     const directory = path.dirname(this.filePath);
-    const temporaryFile = path.join(directory, `.tmp-${path.basename(this.filePath)}-${randomUUID()}.json`);
+    let lastError = null;
 
-    try {
-      await fs.writeFile(temporaryFile, payload, "utf8");
-      await fs.rename(temporaryFile, this.filePath);
-    } finally {
-      await fs.rm(temporaryFile, { force: true }).catch(() => undefined);
+    for (let attempt = 1; attempt <= this.maxFlushRetries; attempt += 1) {
+      const temporaryFile = path.join(directory, `.tmp-${path.basename(this.filePath)}-${randomUUID()}.json`);
+
+      try {
+        await fs.mkdir(directory, { recursive: true });
+        await fs.writeFile(temporaryFile, payload, "utf8");
+        await fs.rename(temporaryFile, this.filePath);
+        return;
+      } catch (error) {
+        lastError = error;
+
+        if (isTransientFileError(error) && attempt < this.maxFlushRetries) {
+          const delayMs = this.flushRetryDelayMs * attempt;
+          this.logger.warn(
+            {
+              err: error,
+              filePath: this.filePath,
+              attempt,
+              maxAttempts: this.maxFlushRetries,
+              delayMs,
+            },
+            "Transient file persistence error, retrying."
+          );
+          await delay(delayMs);
+          continue;
+        }
+
+        throw error;
+      } finally {
+        await fs.rm(temporaryFile, { force: true }).catch(() => undefined);
+      }
     }
+
+    throw lastError;
   }
 
   #createDefaultState() {
@@ -111,6 +141,25 @@ class FileDatabase {
   #cloneState(value) {
     return JSON.parse(JSON.stringify(value));
   }
+}
+
+function isTransientFileError(error) {
+  const code = String(error?.code || "");
+  return ["EPERM", "EBUSY", "EMFILE", "ENFILE", "ENOENT"].includes(code);
+}
+
+function normalizePositiveInteger(value, fallback) {
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
+}
+
+function delay(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 module.exports = {
