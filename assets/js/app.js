@@ -4,6 +4,7 @@
   const STORAGE_KEYS = {
     palette: "aria.palette.v2",
     themeMode: "aria.themeMode",
+    savedPalettes: "aria.savedPalettes.v1",
   };
 
   const THEME_MODES = ["light", "dark", "system"];
@@ -66,6 +67,7 @@
 
   const state = {
     palette: { ...DEFAULT_PALETTE },
+    paletteName: "Paleta em edição",
     themeMode: "system",
     contrast: {
       foreground: DEFAULT_PALETTE.text,
@@ -77,6 +79,8 @@
       stack: [],
       index: -1,
     },
+    savedPalettes: [],
+    selectedSavedPaletteId: null,
   };
 
   const swatchCards = {};
@@ -94,6 +98,12 @@
     hexInputs: Array.from(document.querySelectorAll("input[data-token-text]")),
     swatchGrid: document.getElementById("swatch-grid"),
     tokenOutput: document.getElementById("token-output"),
+    paletteNameInput: document.getElementById("palette-name"),
+    savePaletteButton: document.getElementById("save-palette"),
+    updateSavedPaletteButton: document.getElementById("update-saved-palette"),
+    clearSavedPalettesButton: document.getElementById("clear-saved-palettes"),
+    savedSummary: document.getElementById("saved-summary"),
+    savedPalettesList: document.getElementById("saved-palettes-list"),
     contrastForeground: document.getElementById("contrast-foreground"),
     contrastForegroundText: document.getElementById("contrast-foreground-text"),
     contrastBackground: document.getElementById("contrast-background"),
@@ -120,6 +130,7 @@
     mobileMenuToggle: document.getElementById("mobile-menu-toggle"),
     mobileMenuPanel: document.getElementById("mobile-menu-panel"),
     mobileMenuLinks: Array.from(document.querySelectorAll("#mobile-menu-panel a")),
+    navLinks: Array.from(document.querySelectorAll(".main-nav a, #mobile-menu-panel a")),
   };
 
   init();
@@ -127,6 +138,7 @@
   function init() {
     hydrateStateFromStorage();
     hydrateStateFromQuery();
+    hydrateSavedPalettesFromStorage();
 
     initializeHistory(state.palette);
     buildSwatchCards();
@@ -138,6 +150,10 @@
     updateContrast();
     setActivePresetChip(state.activePreset);
     updateHistoryButtons();
+    syncPaletteNameInput();
+    renderSavedPalettes();
+    updateSavedPaletteControls();
+    bindSectionTracking();
   }
 
   function bindEvents() {
@@ -156,9 +172,14 @@
         }
         state.activePreset = preset;
         state.contrastLinkedToPalette = true;
+        state.paletteName = `Preset ${button.textContent?.trim() || preset}`;
+        state.selectedSavedPaletteId = null;
+        syncPaletteNameInput();
         applyPalette(PRESETS[preset]);
         showToast(`Preset "${button.textContent?.trim() || preset}" aplicado.`);
         setActivePresetChip(preset);
+        renderSavedPalettes();
+        updateSavedPaletteControls();
       });
     });
 
@@ -192,9 +213,14 @@
         const generated = createHarmonyFromPrimary(state.palette.primary);
         state.activePreset = "";
         state.contrastLinkedToPalette = true;
+        state.selectedSavedPaletteId = null;
+        state.paletteName = "Harmonia automática";
+        syncPaletteNameInput();
         applyPalette(generated);
         setActivePresetChip("");
         showToast("Nova harmonia gerada com base na cor primária.");
+        renderSavedPalettes();
+        updateSavedPaletteControls();
       });
     }
 
@@ -202,9 +228,14 @@
       elements.resetButton.addEventListener("click", () => {
         state.activePreset = "default";
         state.contrastLinkedToPalette = true;
+        state.selectedSavedPaletteId = null;
+        state.paletteName = "Paleta em edição";
+        syncPaletteNameInput();
         applyPalette(DEFAULT_PALETTE);
         setActivePresetChip("default");
         showToast("Paleta restaurada para o padrão.");
+        renderSavedPalettes();
+        updateSavedPaletteControls();
       });
     }
 
@@ -274,6 +305,30 @@
       elements.shareButton.addEventListener("click", () => {
         const url = buildShareUrl();
         copyText(url, "Link compartilhável copiado.");
+      });
+    }
+
+    if (elements.paletteNameInput) {
+      elements.paletteNameInput.addEventListener("input", () => {
+        state.paletteName = sanitizePaletteName(elements.paletteNameInput.value);
+      });
+    }
+
+    if (elements.savePaletteButton) {
+      elements.savePaletteButton.addEventListener("click", () => {
+        saveCurrentPaletteToLibrary();
+      });
+    }
+
+    if (elements.updateSavedPaletteButton) {
+      elements.updateSavedPaletteButton.addEventListener("click", () => {
+        updateSelectedSavedPalette();
+      });
+    }
+
+    if (elements.clearSavedPalettesButton) {
+      elements.clearSavedPalettesButton.addEventListener("click", () => {
+        clearSavedPalettes();
       });
     }
 
@@ -439,6 +494,74 @@
     } else {
       elements.mobileMenuPanel.setAttribute("hidden", "");
     }
+  }
+
+  function bindSectionTracking() {
+    const sectionHashes = Array.from(
+      new Set(
+        elements.navLinks
+          .map((link) => link.getAttribute("href"))
+          .filter((href) => typeof href === "string" && href.startsWith("#") && href.length > 1)
+      )
+    );
+
+    const sections = sectionHashes
+      .map((hash) => document.querySelector(hash))
+      .filter((section) => section instanceof HTMLElement);
+
+    if (sections.length === 0) {
+      return;
+    }
+
+    const setActive = (hash) => {
+      elements.navLinks.forEach((link) => {
+        const isCurrent = link.getAttribute("href") === hash;
+        link.classList.toggle("is-current", isCurrent);
+        if (isCurrent) {
+          link.setAttribute("aria-current", "true");
+        } else {
+          link.removeAttribute("aria-current");
+        }
+      });
+    };
+
+    elements.navLinks.forEach((link) => {
+      link.addEventListener("click", () => {
+        const hash = link.getAttribute("href");
+        if (typeof hash === "string" && hash.startsWith("#") && hash.length > 1) {
+          setActive(hash);
+        }
+      });
+    });
+
+    if (typeof IntersectionObserver !== "function") {
+      setActive(sectionHashes[0]);
+      return;
+    }
+
+    const visibilityByHash = new Map();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const hash = `#${entry.target.id}`;
+          visibilityByHash.set(hash, entry.intersectionRatio);
+        });
+        const ordered = Array.from(visibilityByHash.entries()).sort((a, b) => b[1] - a[1]);
+        if (ordered.length > 0 && ordered[0][1] > 0.2) {
+          setActive(ordered[0][0]);
+        }
+      },
+      {
+        rootMargin: "-20% 0px -55% 0px",
+        threshold: [0.2, 0.4, 0.65],
+      }
+    );
+
+    sections.forEach((section) => {
+      observer.observe(section);
+      visibilityByHash.set(`#${section.id}`, 0);
+    });
+    setActive(sectionHashes[0]);
   }
 
   function commitHexInput(input) {
@@ -899,8 +1022,13 @@
 
     state.activePreset = "";
     state.contrastLinkedToPalette = true;
+    state.selectedSavedPaletteId = null;
+    state.paletteName = sanitizePaletteName(parsed?.name || parsed?.metadata?.name || "Paleta importada") || "Paleta importada";
     setActivePresetChip("");
+    syncPaletteNameInput();
     applyPalette(sanitizePalette(candidate, state.palette));
+    renderSavedPalettes();
+    updateSavedPaletteControls();
     showToast("Tokens importados com sucesso.");
   }
 
@@ -918,6 +1046,273 @@
       return payload.colors;
     }
     return payload;
+  }
+
+  function hydrateSavedPalettesFromStorage() {
+    const raw = safeStorageGet(STORAGE_KEYS.savedPalettes);
+    if (!raw) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return;
+      }
+
+      state.savedPalettes = parsed
+        .map((entry) => normalizeSavedPaletteEntry(entry))
+        .filter(Boolean)
+        .slice(0, 30);
+    } catch (error) {
+      state.savedPalettes = [];
+    }
+  }
+
+  function normalizeSavedPaletteEntry(entry) {
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+
+    const id = typeof entry.id === "string" ? entry.id : createLocalId();
+    const name = sanitizePaletteName(entry.name);
+    const palette = sanitizePalette(entry.palette || entry.tokens || entry.colors, DEFAULT_PALETTE);
+    const createdAt = typeof entry.createdAt === "string" ? entry.createdAt : new Date().toISOString();
+    const updatedAt = typeof entry.updatedAt === "string" ? entry.updatedAt : createdAt;
+
+    return {
+      id,
+      name: name || "Paleta sem nome",
+      palette,
+      createdAt,
+      updatedAt,
+    };
+  }
+
+  function createLocalId() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      return window.crypto.randomUUID();
+    }
+    return `palette-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  }
+
+  function persistSavedPalettes() {
+    safeStorageSet(STORAGE_KEYS.savedPalettes, JSON.stringify(state.savedPalettes));
+  }
+
+  function sanitizePaletteName(name) {
+    if (typeof name !== "string") {
+      return "";
+    }
+    return name
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80);
+  }
+
+  function syncPaletteNameInput() {
+    if (!elements.paletteNameInput) {
+      return;
+    }
+    elements.paletteNameInput.value = state.paletteName;
+  }
+
+  function saveCurrentPaletteToLibrary() {
+    const name = sanitizePaletteName(elements.paletteNameInput?.value || state.paletteName) || `Paleta ${state.savedPalettes.length + 1}`;
+    const now = new Date().toISOString();
+    const entry = {
+      id: createLocalId(),
+      name,
+      palette: getPaletteSnapshot(state.palette),
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    state.savedPalettes = [entry, ...state.savedPalettes].slice(0, 30);
+    state.selectedSavedPaletteId = entry.id;
+    state.paletteName = name;
+
+    persistSavedPalettes();
+    syncPaletteNameInput();
+    renderSavedPalettes();
+    updateSavedPaletteControls();
+    showToast("Paleta salva na biblioteca local.");
+  }
+
+  function updateSelectedSavedPalette() {
+    if (!state.selectedSavedPaletteId) {
+      showToast("Selecione uma paleta salva para atualizar.");
+      return;
+    }
+
+    const target = state.savedPalettes.find((entry) => entry.id === state.selectedSavedPaletteId);
+    if (!target) {
+      state.selectedSavedPaletteId = null;
+      updateSavedPaletteControls();
+      renderSavedPalettes();
+      showToast("Paleta selecionada não encontrada.");
+      return;
+    }
+
+    const name = sanitizePaletteName(elements.paletteNameInput?.value || state.paletteName) || target.name;
+    target.name = name;
+    target.palette = getPaletteSnapshot(state.palette);
+    target.updatedAt = new Date().toISOString();
+    state.paletteName = name;
+
+    persistSavedPalettes();
+    syncPaletteNameInput();
+    renderSavedPalettes();
+    updateSavedPaletteControls();
+    showToast("Paleta salva atualizada.");
+  }
+
+  function loadSavedPaletteById(id) {
+    const target = state.savedPalettes.find((entry) => entry.id === id);
+    if (!target) {
+      showToast("Paleta não encontrada na biblioteca.");
+      return;
+    }
+
+    state.selectedSavedPaletteId = target.id;
+    state.activePreset = "";
+    state.contrastLinkedToPalette = true;
+    state.paletteName = target.name;
+    setActivePresetChip("");
+    syncPaletteNameInput();
+    applyPalette(target.palette);
+    renderSavedPalettes();
+    updateSavedPaletteControls();
+    showToast(`Paleta "${target.name}" aplicada.`);
+  }
+
+  function deleteSavedPaletteById(id) {
+    const previousCount = state.savedPalettes.length;
+    state.savedPalettes = state.savedPalettes.filter((entry) => entry.id !== id);
+    if (state.savedPalettes.length === previousCount) {
+      return;
+    }
+
+    if (state.selectedSavedPaletteId === id) {
+      state.selectedSavedPaletteId = null;
+    }
+
+    persistSavedPalettes();
+    renderSavedPalettes();
+    updateSavedPaletteControls();
+    showToast("Paleta removida da biblioteca.");
+  }
+
+  function clearSavedPalettes() {
+    if (state.savedPalettes.length === 0) {
+      showToast("A biblioteca já está vazia.");
+      return;
+    }
+    state.savedPalettes = [];
+    state.selectedSavedPaletteId = null;
+    persistSavedPalettes();
+    renderSavedPalettes();
+    updateSavedPaletteControls();
+    showToast("Biblioteca local limpa.");
+  }
+
+  function updateSavedPaletteControls() {
+    if (elements.updateSavedPaletteButton) {
+      const hasSelection = Boolean(
+        state.selectedSavedPaletteId && state.savedPalettes.some((entry) => entry.id === state.selectedSavedPaletteId)
+      );
+      elements.updateSavedPaletteButton.disabled = !hasSelection;
+      elements.updateSavedPaletteButton.setAttribute("aria-disabled", String(!hasSelection));
+    }
+
+    if (elements.clearSavedPalettesButton) {
+      const hasItems = state.savedPalettes.length > 0;
+      elements.clearSavedPalettesButton.disabled = !hasItems;
+      elements.clearSavedPalettesButton.setAttribute("aria-disabled", String(!hasItems));
+    }
+  }
+
+  function renderSavedPalettes() {
+    if (!elements.savedPalettesList || !elements.savedSummary) {
+      return;
+    }
+
+    elements.savedPalettesList.innerHTML = "";
+    if (state.savedPalettes.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "saved-empty";
+      empty.textContent = "Salve variações da sua paleta para comparar ideias e acelerar decisões de design.";
+      elements.savedPalettesList.appendChild(empty);
+      elements.savedSummary.textContent = "Nenhuma paleta salva ainda.";
+      return;
+    }
+
+    const formatter = new Intl.DateTimeFormat("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
+
+    elements.savedSummary.textContent = `${state.savedPalettes.length} paleta(s) armazenada(s) localmente.`;
+
+    state.savedPalettes.forEach((entry) => {
+      const card = document.createElement("article");
+      card.className = "saved-card";
+      if (entry.id === state.selectedSavedPaletteId) {
+        card.classList.add("is-selected");
+      }
+
+      const header = document.createElement("header");
+      header.className = "saved-card__header";
+
+      const titleWrap = document.createElement("div");
+      const title = document.createElement("h3");
+      title.className = "saved-card__title";
+      title.textContent = entry.name;
+      const time = document.createElement("p");
+      time.className = "saved-card__time";
+      const timestamp = new Date(entry.updatedAt);
+      time.textContent = `Atualizada em ${Number.isNaN(timestamp.getTime()) ? entry.updatedAt : formatter.format(timestamp)}`;
+      titleWrap.appendChild(title);
+      titleWrap.appendChild(time);
+
+      const chips = document.createElement("div");
+      chips.className = "saved-card__chips";
+      ["primary", "secondary", "accent", "background"].forEach((tokenKey) => {
+        const chip = document.createElement("span");
+        chip.style.background = entry.palette[tokenKey];
+        chip.title = `${tokenKey}: ${entry.palette[tokenKey]}`;
+        chips.appendChild(chip);
+      });
+
+      header.appendChild(titleWrap);
+      header.appendChild(chips);
+
+      const actions = document.createElement("div");
+      actions.className = "saved-card__actions";
+
+      const applyButton = document.createElement("button");
+      applyButton.type = "button";
+      applyButton.className = "button button--ghost";
+      applyButton.textContent = "Aplicar";
+      applyButton.addEventListener("click", () => {
+        loadSavedPaletteById(entry.id);
+      });
+
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className = "button button--ghost";
+      removeButton.textContent = "Excluir";
+      removeButton.addEventListener("click", () => {
+        deleteSavedPaletteById(entry.id);
+      });
+
+      actions.appendChild(applyButton);
+      actions.appendChild(removeButton);
+
+      card.appendChild(header);
+      card.appendChild(actions);
+      elements.savedPalettesList.appendChild(card);
+    });
   }
 
   function initializeHistory(initialPalette) {

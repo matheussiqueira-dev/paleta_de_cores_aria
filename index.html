@@ -83,6 +83,7 @@
 
         <nav class="main-nav" aria-label="Navegação principal">
           <a href="#laboratorio">Laboratório</a>
+          <a href="#biblioteca">Biblioteca</a>
           <a href="#acessibilidade">Contraste</a>
           <a href="#componentes">Componentes</a>
           <a href="#tokens">Tokens</a>
@@ -109,6 +110,7 @@
       <div id="mobile-menu-panel" class="mobile-menu-panel" hidden>
         <nav aria-label="Navegação móvel">
           <a href="#laboratorio">Laboratório</a>
+          <a href="#biblioteca">Biblioteca</a>
           <a href="#acessibilidade">Contraste</a>
           <a href="#componentes">Componentes</a>
           <a href="#tokens">Tokens</a>
@@ -134,7 +136,7 @@
           <p class="eyebrow">Capacidades</p>
           <ul>
             <li><span>8</span> tokens editáveis em tempo real</li>
-            <li><span>3</span> presets para acelerar criação</li>
+            <li><span>4</span> presets para acelerar criação</li>
             <li><span>WCAG</span> AA e AAA com feedback imediato</li>
           </ul>
         </aside>
@@ -153,6 +155,25 @@
             <button type="button" class="chip" data-preset="ocean">Oceano</button>
             <button type="button" class="chip" data-preset="sunset">Pôr do sol</button>
             <button type="button" class="chip" data-preset="forest">Floresta</button>
+          </div>
+
+          <div class="palette-meta">
+            <div class="field field--name">
+              <label for="palette-name">Nome da paleta</label>
+              <input
+                id="palette-name"
+                type="text"
+                maxlength="80"
+                placeholder="Ex.: Landing Product 2026"
+                autocomplete="off"
+              />
+            </div>
+            <div class="actions palette-meta__actions">
+              <button id="save-palette" type="button" class="button button--secondary">Salvar na biblioteca</button>
+              <button id="update-saved-palette" type="button" class="button button--ghost" disabled>
+                Atualizar selecionada
+              </button>
+            </div>
           </div>
 
           <form id="palette-form" class="palette-form" novalidate>
@@ -239,6 +260,19 @@
           </div>
           <div id="swatch-grid" class="swatch-grid"></div>
         </section>
+      </section>
+
+      <section id="biblioteca" class="panel">
+        <div class="section-head">
+          <p class="eyebrow">Organização</p>
+          <h2>Biblioteca local de paletas</h2>
+          <p>Armazene variações para comparar conceitos e acelerar decisões visuais sem perder histórico.</p>
+        </div>
+        <div class="saved-toolbar">
+          <p id="saved-summary" class="saved-summary">Nenhuma paleta salva ainda.</p>
+          <button id="clear-saved-palettes" type="button" class="button button--ghost">Limpar biblioteca</button>
+        </div>
+        <div id="saved-palettes-list" class="saved-palettes" aria-live="polite"></div>
       </section>
 
       <section id="acessibilidade" class="panel">

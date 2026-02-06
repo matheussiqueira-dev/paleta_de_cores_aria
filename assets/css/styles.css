@@ -188,6 +188,11 @@ body {
   transform: translateY(-1px);
 }
 
+.main-nav a.is-current {
+  background: var(--color-primary);
+  color: #fff;
+}
+
 .main-nav a:focus-visible,
 .theme-toggle__option:focus-visible,
 .mobile-menu-toggle:focus-visible,
@@ -396,6 +401,26 @@ main {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.65rem 0.8rem;
+}
+
+.palette-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  margin-bottom: 0.9rem;
+  align-items: end;
+}
+
+.field--name {
+  min-width: 0;
+}
+
+.field--name input {
+  width: 100%;
+}
+
+.palette-meta__actions {
+  margin-top: 0;
 }
 
 .field {
@@ -614,6 +639,93 @@ input[type="text"].is-invalid {
   margin-top: 1rem;
 }
 
+#biblioteca {
+  margin-top: 1rem;
+}
+
+.saved-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.saved-summary {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.84rem;
+}
+
+.saved-palettes {
+  margin-top: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.saved-empty {
+  margin: 0;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+  color: var(--color-muted);
+  font-size: 0.84rem;
+}
+
+.saved-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  padding: 0.72rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.saved-card.is-selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.16);
+}
+
+.saved-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.saved-card__title {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.saved-card__time {
+  margin: 0.18rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.74rem;
+}
+
+.saved-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.32rem;
+}
+
+.saved-card__chips span {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.28rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.saved-card__actions {
+  margin-top: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
 .contrast-layout {
   display: grid;
   grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
@@ -818,6 +930,10 @@ input[type="text"].is-invalid {
   .preview-grid {
     grid-template-columns: 1fr;
   }
+
+  .saved-palettes {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 860px) {
@@ -870,6 +986,11 @@ input[type="text"].is-invalid {
     color: var(--color-primary);
   }
 
+  .mobile-menu-panel a.is-current {
+    background: var(--color-primary);
+    color: #fff;
+  }
+
   .hero {
     grid-template-columns: 1fr;
   }
@@ -884,6 +1005,11 @@ input[type="text"].is-invalid {
 
   .theme-toggle {
     margin-left: 0;
+  }
+
+  .palette-meta {
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 }
 

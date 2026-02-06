@@ -3,72 +3,95 @@
 ![Preview da interface](docs/preview.png)
 
 ## Visão geral do frontend
-O **Paleta de Cores ARIA** é um laboratório frontend para criação e validação de paletas de cor com foco em:
-- design system e tokens visuais;
-- acessibilidade (WCAG) aplicada desde a prototipação;
-- exportação rápida para implementação em produto.
+O **Paleta de Cores ARIA** é um laboratório visual para criação, validação e gestão de paletas de cores com foco em:
+- qualidade de interface (UI moderna e consistente);
+- usabilidade real para fluxos de design;
+- acessibilidade com critérios WCAG;
+- exportação prática de tokens para implementação em produto.
+
+### Propósito do produto
+Reduzir fricção entre design e desenvolvimento, permitindo que equipes definam, testem e compartilhem paletas de forma rápida, com feedback técnico de contraste e preview de componentes.
 
 ### Público-alvo
-- designers e desenvolvedores frontend;
-- times de produto que precisam padronizar linguagem visual;
-- estudantes e profissionais que praticam acessibilidade e UI moderna.
+- Designers de produto e UI;
+- Desenvolvedores frontend;
+- Times de produto e branding;
+- Profissionais/estudantes em design systems.
 
-### Fluxos principais
-1. Escolher um preset ou editar tokens manualmente.
-2. Validar contraste no checker WCAG.
-3. Testar a paleta em componentes de preview.
-4. Exportar tokens (`CSS`/`JSON`) ou compartilhar por URL.
-5. Importar JSON para continuar trabalho existente.
+## Análise técnica
 
-## Análise técnica do frontend
+### Arquitetura frontend
+Projeto estático, sem framework, com responsabilidades bem separadas:
+- `index.html`: semântica, estrutura, SEO e pontos de ancoragem da aplicação.
+- `assets/css/styles.css`: design system visual, layout responsivo e estados.
+- `assets/js/app.js`: estado, regras de negócio, eventos e renderização dinâmica.
 
-### Arquitetura e organização
-Projeto estático, sem framework, organizado por responsabilidades:
-- `index.html`: estrutura semântica e SEO;
-- `assets/css/styles.css`: design system visual, layout e responsividade;
-- `assets/js/app.js`: estado, regras de negócio e interações.
+### Estado e escalabilidade
+- Estado único centralizado (`palette`, `contrast`, `themeMode`, `history`, `savedPalettes`).
+- Metadados declarativos (`TOKEN_META`, `PRESETS`) para reduzir duplicação.
+- Persistência em `localStorage` com fallback seguro.
+- Camada de utilitários para cor/contraste e serialização de estado compartilhável.
 
-Essa divisão evita acoplamento e facilita evolução incremental.
+### Performance
+- Carregamento leve (HTML/CSS/JS puro, sem runtime pesado).
+- Script principal com `defer`.
+- Renderização incremental para grid de swatches e biblioteca local.
+- Atualizações visuais via CSS custom properties (baixo custo de repaint).
 
-### Padrões e escalabilidade
-- estado centralizado em objeto único (`palette`, `theme`, `contrast`, `history`);
-- tokens declarativos (`TOKEN_META`) para reduzir duplicação;
-- funções utilitárias puras para cor/contraste (reuso e previsibilidade);
-- ações de UI desacopladas de renderização.
+### SEO
+- `title`, `description`, `canonical`, Open Graph e Twitter Cards.
+- JSON-LD (`WebApplication`) para metadados estruturados.
 
-### Performance e renderização
-- `script` principal com `defer`;
-- atualização incremental de DOM;
-- sem dependências pesadas de runtime para manter carregamento rápido;
-- persistência local com fallback seguro para ambientes restritos.
+### Acessibilidade e usabilidade
+- Skip link.
+- Foco visível consistente.
+- Feedback de status com `aria-live`.
+- Checker WCAG AA/AAA em tempo real.
+- Navegação mobile acessível (menu colapsável + fechamento por teclado/click externo).
+- Respeito a `prefers-reduced-motion`.
 
-### Acessibilidade, SEO e responsividade
-- landmarks semânticos, `aria-live`, skip-link, foco visível;
-- checker de contraste com feedback AA/AAA;
-- suporte a `prefers-reduced-motion`;
-- navegação mobile acessível com menu colapsável;
-- metadados sociais (Open Graph/Twitter), canonical e JSON-LD.
+## UI/UX e Design System
+
+### Melhorias de UX implementadas
+- Jornada principal simplificada: editar tokens → validar contraste → testar preview → salvar/exportar.
+- Navegação contextual com destaque da seção ativa.
+- Biblioteca local de paletas para comparação e iteração.
+- Ações de produtividade:
+  - desfazer/refazer (botões + atalhos);
+  - importação de JSON;
+  - cópia/download de tokens.
+
+### Sistema visual
+- Tokens de cor e tipografia definidos em CSS custom properties.
+- Componentes reutilizáveis:
+  - botões (`primary`, `secondary`, `ghost`);
+  - chips/presets;
+  - cards (swatches e biblioteca);
+  - toast de feedback;
+  - estados (hover, focus, disabled, active).
+
+## Funcionalidades principais
+- Editor de paleta com 8 tokens (`primary`, `secondary`, `accent`, `background`, `surface`, `text`, `muted`, `border`).
+- Presets prontos para aceleração de fluxo.
+- Geração automática de harmonia por cor primária.
+- Verificação de contraste WCAG (AA/AAA para texto normal e grande).
+- Preview de componentes com aplicação dos tokens.
+- Exportação para CSS vars e JSON.
+- Importação de JSON de tokens.
+- Link compartilhável com estado serializado.
+- Biblioteca local de paletas:
+  - salvar;
+  - aplicar;
+  - atualizar;
+  - excluir;
+  - limpar biblioteca.
 
 ## Stack e tecnologias
 - HTML5
-- CSS3 (Custom Properties / tokens)
+- CSS3 (Custom Properties / Design Tokens)
 - JavaScript ES2020+
-- Playwright (captura de screenshot em workflow)
+- Playwright (workflow de screenshot / validação visual)
 - GitHub Actions + GitHub Pages
-
-## Funcionalidades implementadas
-- Editor de paleta com 8 tokens (`primary`, `secondary`, `accent`, `background`, `surface`, `text`, `muted`, `border`)
-- Presets prontos (Base ARIA, Oceano, Pôr do sol, Floresta)
-- Geração automática de harmonia por cor primária
-- Checker de contraste WCAG (AA/AAA, texto normal/grande)
-- Preview de componentes com tokens aplicados
-- Copiar token individual, copiar `:root` CSS e copiar JSON
-- Download de JSON de tokens
-- **Importação de tokens via arquivo JSON**
-- **Histórico de edição com desfazer/refazer + atalhos**
-- **Navegação mobile acessível**
-- Persistência de tema e paleta no `localStorage`
-- Link compartilhável com estado serializado
 
 ## Estrutura do projeto
 ```text
@@ -84,12 +107,14 @@ paleta_de_cores_aria-main/
 │     └─ app.js
 ├─ docs/
 │  └─ preview.png
+├─ favicon-dark.svg
+├─ favicon-light.svg
 ├─ index.html
 ├─ package.json
 └─ README.md
 ```
 
-## Setup e execução
+## Instalação e execução
 1. Clone o repositório:
    ```bash
    git clone https://github.com/matheussiqueira-dev/paleta_de_cores_aria.git
@@ -99,32 +124,30 @@ paleta_de_cores_aria-main/
    ```bash
    npm install
    ```
-3. Rode localmente:
+3. Execute localmente:
    ```bash
    npm run preview
    ```
-4. Abra `http://localhost:4173`.
+4. Acesse:
+   - `http://localhost:4173`
 
-Também é possível abrir `index.html` diretamente no navegador.
-
-## Scripts
-- `npm test`: valida sintaxe do JavaScript (`node --check assets/js/app.js`)
-- `npm run preview`: servidor estático local (`http-server`)
+## Scripts disponíveis
+- `npm test`: valida sintaxe do JavaScript (`node --check assets/js/app.js`).
+- `npm run preview`: sobe servidor estático local para desenvolvimento rápido.
 
 ## Boas práticas adotadas
-- separação clara entre estrutura, estilo e comportamento;
-- tokens de design centralizados e reutilizáveis;
-- componentes com estados visuais consistentes;
-- acessibilidade tratada como requisito funcional;
-- fallback seguro para APIs do navegador;
-- documentação de uso orientada a produto.
+- Separação de responsabilidades entre marcação, estilo e lógica.
+- Estrutura orientada a reuso com design tokens.
+- Tratamento defensivo de `localStorage` e clipboard.
+- Fluxos com feedback imediato e acessível.
+- Componentes com estados explícitos para previsibilidade de UX.
 
 ## Melhorias futuras
-- exportação no formato W3C Design Tokens;
-- geração automática de escalas tonais (50-900);
-- suíte de testes E2E para fluxos críticos;
-- modo de colaboração com múltiplas paletas salvas;
-- pipeline com auditoria de acessibilidade automatizada.
+- Exportação em padrão W3C Design Tokens.
+- Importação de formatos de ferramentas de design (Figma Tokens, Style Dictionary).
+- Testes E2E automatizados no CI para fluxos críticos (save/import/share).
+- Modo colaboração com múltiplas coleções de paleta.
+- Auditoria automatizada de acessibilidade em pipeline.
 
 ---
 
