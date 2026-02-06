@@ -1,9 +1,11 @@
 "use strict";
 
+const { randomBytes } = require("node:crypto");
 const { AppError } = require("../../domain/errors/AppError");
 const { PALETTE_TOKEN_KEYS } = require("../../domain/constants/paletteTokens");
 const { sanitizeText, sanitizeStringArray } = require("../../utils/sanitize");
 const { normalizeHexColor } = require("../../utils/color");
+const { buildPaletteAudit } = require("../../utils/paletteAudit");
 
 class PaletteService {
   constructor(dependencies) {
@@ -15,11 +17,19 @@ class PaletteService {
     const limit = clampInteger(query.limit, 1, 100, 20);
     const offset = clampInteger(query.offset, 0, 10000, 0);
     const search = sanitizeText(query.search || "", 120);
+    const visibility = parseVisibility(query.visibility);
+    const tags = sanitizeStringArray(query.tags, 8, 36);
+    const sortBy = parseSortBy(query.sortBy);
+    const sortDir = parseSortDirection(query.sortDir);
 
     return this.paletteRepository.listByOwner(userId, {
       query: search,
       limit,
       offset,
+      visibility,
+      tags,
+      sortBy,
+      sortDir,
     });
   }
 
@@ -149,6 +159,16 @@ class PaletteService {
     return palette;
   }
 
+  async auditForUser(userId, paletteId) {
+    const palette = await this.getByIdForUser(userId, paletteId);
+    return buildAuditResponse(palette);
+  }
+
+  async auditPublicByShareId(shareId) {
+    const palette = await this.getPublicByShareId(shareId);
+    return buildAuditResponse(palette);
+  }
+
   async getAnalyticsSummary(userId) {
     const { total, items } = await this.paletteRepository.listByOwner(userId, {
       limit: 1000,
@@ -224,7 +244,38 @@ function clampInteger(value, min, max, fallback) {
 }
 
 function createShareId() {
-  return Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
+  return randomBytes(8).toString("hex");
+}
+
+function buildAuditResponse(palette) {
+  return {
+    palette: {
+      id: palette.id,
+      name: palette.name,
+      isPublic: Boolean(palette.isPublic),
+      shareId: palette.shareId || null,
+      updatedAt: palette.updatedAt,
+    },
+    audit: buildPaletteAudit(palette.tokens),
+  };
+}
+
+function parseVisibility(value) {
+  const normalized = String(value || "all").trim().toLowerCase();
+  if (normalized === "public" || normalized === "private" || normalized === "all") {
+    return normalized;
+  }
+  return "all";
+}
+
+function parseSortBy(value) {
+  const normalized = String(value || "updatedAt").trim();
+  return ["updatedAt", "createdAt", "name"].includes(normalized) ? normalized : "updatedAt";
+}
+
+function parseSortDirection(value) {
+  const normalized = String(value || "desc").trim().toLowerCase();
+  return normalized === "asc" ? "asc" : "desc";
 }
 
 module.exports = {

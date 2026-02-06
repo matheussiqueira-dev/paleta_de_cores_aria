@@ -8,23 +8,57 @@ class PaletteRepository {
   }
 
   async listByOwner(ownerId, options = {}) {
-    const { query = "", limit = 20, offset = 0 } = options;
+    const {
+      query = "",
+      limit = 20,
+      offset = 0,
+      visibility = "all",
+      tags = [],
+      sortBy = "updatedAt",
+      sortDir = "desc",
+    } = options;
     const safeQuery = String(query || "").trim().toLowerCase();
+    const safeTags = Array.isArray(tags) ? tags.map((value) => String(value).trim().toLowerCase()).filter(Boolean) : [];
+    const direction = sortDir === "asc" ? 1 : -1;
+    const canSortBy = ["updatedAt", "createdAt", "name"].includes(sortBy) ? sortBy : "updatedAt";
 
     const state = await this.database.read();
-    const ownedPalettes = state.palettes.filter((entry) => entry.ownerId === ownerId);
-    const filtered = safeQuery
-      ? ownedPalettes.filter((entry) => {
-          const haystack = `${entry.name} ${entry.description || ""} ${(entry.tags || []).join(" ")}`.toLowerCase();
-          return haystack.includes(safeQuery);
-        })
-      : ownedPalettes;
+    const filtered = state.palettes.filter((entry) => {
+      if (entry.ownerId !== ownerId) {
+        return false;
+      }
 
-    filtered.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+      if (visibility === "public" && entry.isPublic !== true) {
+        return false;
+      }
+      if (visibility === "private" && entry.isPublic === true) {
+        return false;
+      }
+
+      if (safeTags.length > 0) {
+        const entryTags = Array.isArray(entry.tags) ? entry.tags.map((tag) => String(tag).toLowerCase()) : [];
+        const hasEveryTag = safeTags.every((tag) => entryTags.includes(tag));
+        if (!hasEveryTag) {
+          return false;
+        }
+      }
+
+      if (!safeQuery) {
+        return true;
+      }
+
+      const haystack = `${entry.name} ${entry.description || ""} ${(entry.tags || []).join(" ")}`.toLowerCase();
+      return haystack.includes(safeQuery);
+    });
+
+    filtered.sort((a, b) => comparePalettes(a, b, canSortBy, direction));
     const paged = filtered.slice(offset, offset + limit);
 
     return {
       total: filtered.length,
+      limit,
+      offset,
+      hasMore: offset + paged.length < filtered.length,
       items: paged.map((entry) => ({ ...entry })),
     };
   }
@@ -108,6 +142,21 @@ class PaletteRepository {
 
     return deleted;
   }
+}
+
+function comparePalettes(a, b, sortBy, direction) {
+  if (sortBy === "name") {
+    return a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }) * direction;
+  }
+
+  const left = Date.parse(a[sortBy] || "");
+  const right = Date.parse(b[sortBy] || "");
+  const safeLeft = Number.isFinite(left) ? left : 0;
+  const safeRight = Number.isFinite(right) ? right : 0;
+  if (safeLeft === safeRight) {
+    return String(a.id || "").localeCompare(String(b.id || ""));
+  }
+  return (safeLeft - safeRight) * direction;
 }
 
 module.exports = {

@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Laboratório de paletas com foco em design moderno, contraste WCAG, exportação de tokens e acessibilidade ARIA."
+      content="Studio profissional para criacao, auditoria e distribuicao de paletas com foco em acessibilidade WCAG."
     />
     <meta name="robots" content="index, follow" />
-    <meta id="theme-color-meta" name="theme-color" content="#f3f7ff" />
+    <meta id="theme-color-meta" name="theme-color" content="#ecf3ff" />
     <meta name="color-scheme" content="light dark" />
     <link rel="canonical" href="https://matheussiqueira-dev.github.io/paleta_de_cores_aria/" />
     <link id="favicon" rel="icon" type="image/svg+xml" href="favicon-light.svg" />
@@ -17,18 +17,18 @@
     <meta property="og:locale" content="pt_BR" />
     <meta property="og:site_name" content="Paleta de Cores ARIA" />
     <meta property="og:url" content="https://matheussiqueira-dev.github.io/paleta_de_cores_aria/" />
-    <meta property="og:title" content="Paleta de Cores ARIA | Color Studio" />
+    <meta property="og:title" content="Paleta de Cores ARIA | Studio" />
     <meta
       property="og:description"
-      content="Crie, teste e exporte paletas de cores com contraste acessível e componentes prontos."
+      content="Crie, audite e exporte paletas de cores prontas para design system e producao."
     />
     <meta property="og:image" content="https://matheussiqueira-dev.github.io/paleta_de_cores_aria/docs/preview.png" />
-    <meta property="og:image:alt" content="Pré-visualização do laboratório de paletas" />
+
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Paleta de Cores ARIA | Color Studio" />
+    <meta name="twitter:title" content="Paleta de Cores ARIA | Studio" />
     <meta
       name="twitter:description"
-      content="Laboratório visual para criação de paletas com WCAG, exportação de tokens e preview de UI."
+      content="Laboratorio fullstack para paletas com validacao WCAG, biblioteca e sincronizacao cloud."
     />
     <meta name="twitter:image" content="https://matheussiqueira-dev.github.io/paleta_de_cores_aria/docs/preview.png" />
 
@@ -40,14 +40,14 @@
         "applicationCategory": "DesignApplication",
         "operatingSystem": "Web Browser",
         "url": "https://matheussiqueira-dev.github.io/paleta_de_cores_aria/",
-        "description": "Laboratório visual para criação de paletas com validação WCAG e exportação de design tokens."
+        "description": "Studio para criacao, auditoria e distribuicao de paletas com foco em acessibilidade WCAG."
       }
     </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="assets/css/styles.css" />
@@ -64,56 +64,58 @@
         document.documentElement.setAttribute("data-theme", resolved);
       })();
     </script>
-    <title>Paleta de Cores ARIA | Color Studio</title>
+    <title>Paleta de Cores ARIA | Studio Profissional</title>
   </head>
   <body>
-    <a class="skip-link" href="#conteudo">Pular para o conteúdo principal</a>
-    <div class="background-orb background-orb--one" aria-hidden="true"></div>
-    <div class="background-orb background-orb--two" aria-hidden="true"></div>
+    <a class="skip-link" href="#conteudo">Pular para o conteudo principal</a>
+    <div class="atmosphere" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
 
     <header class="site-header">
-      <div class="container nav-wrap">
-        <a class="brand" href="#inicio" aria-label="Voltar ao início">
-          <span class="brand__icon" aria-hidden="true"></span>
+      <div class="container header-shell">
+        <a class="brand" href="#inicio" aria-label="Voltar ao inicio">
+          <span class="brand__glyph" aria-hidden="true"></span>
           <span class="brand__text">
             <strong>Paleta ARIA</strong>
-            <small>Color Studio</small>
+            <small>Color Operations Studio</small>
           </span>
         </a>
 
-        <nav class="main-nav" aria-label="Navegação principal">
-          <a href="#laboratorio">Laboratório</a>
+        <nav class="main-nav" aria-label="Navegacao principal">
+          <a href="#laboratorio">Laboratorio</a>
           <a href="#biblioteca">Biblioteca</a>
           <a href="#nuvem">Nuvem</a>
-          <a href="#acessibilidade">Contraste</a>
+          <a href="#acessibilidade">Auditoria</a>
           <a href="#componentes">Componentes</a>
           <a href="#tokens">Tokens</a>
         </nav>
 
-        <div class="theme-toggle" role="group" aria-label="Modo de tema">
-          <button type="button" class="theme-toggle__option" data-theme-mode="light">Claro</button>
-          <button type="button" class="theme-toggle__option" data-theme-mode="dark">Escuro</button>
-          <button type="button" class="theme-toggle__option" data-theme-mode="system">Sistema</button>
-        </div>
+        <div class="header-actions">
+          <div class="theme-toggle" role="group" aria-label="Modo de tema">
+            <button type="button" class="theme-toggle__option" data-theme-mode="light">Claro</button>
+            <button type="button" class="theme-toggle__option" data-theme-mode="dark">Escuro</button>
+            <button type="button" class="theme-toggle__option" data-theme-mode="system">Sistema</button>
+          </div>
 
-        <button
-          id="mobile-menu-toggle"
-          class="mobile-menu-toggle"
-          type="button"
-          aria-label="Abrir menu de navegação"
-          aria-expanded="false"
-          aria-controls="mobile-menu-panel"
-        >
-          Menu
-        </button>
+          <button
+            id="mobile-menu-toggle"
+            class="mobile-menu-toggle"
+            type="button"
+            aria-label="Abrir menu de navegacao"
+            aria-expanded="false"
+            aria-controls="mobile-menu-panel"
+          >
+            Menu
+          </button>
+        </div>
       </div>
 
       <div id="mobile-menu-panel" class="mobile-menu-panel" hidden>
-        <nav aria-label="Navegação móvel">
-          <a href="#laboratorio">Laboratório</a>
+        <nav aria-label="Navegacao movel">
+          <a href="#laboratorio">Laboratorio</a>
           <a href="#biblioteca">Biblioteca</a>
           <a href="#nuvem">Nuvem</a>
-          <a href="#acessibilidade">Contraste</a>
+          <a href="#acessibilidade">Auditoria</a>
           <a href="#componentes">Componentes</a>
           <a href="#tokens">Tokens</a>
         </nav>
@@ -121,41 +123,80 @@
     </header>
 
     <main id="conteudo" class="container">
-      <section id="inicio" class="hero panel">
+      <section id="inicio" class="panel hero">
         <div class="hero__content">
-          <p class="eyebrow">Design System Starter</p>
-          <h1>Construa paletas consistentes com foco real em acessibilidade.</h1>
-          <p class="hero__lead">
-            Um laboratório visual para criar paletas, validar contraste WCAG e exportar tokens prontos para produção.
-            Tudo com preview de componentes e persistência local.
+          <p class="eyebrow">Design System Readiness</p>
+          <h1>Planeje paletas confiaveis, valide acessibilidade e entregue tokens prontos para produto.</h1>
+          <p>
+            Um fluxo unico para design e engenharia: criacao visual, auditoria WCAG, biblioteca versionada e operacao
+            cloud com API segura.
           </p>
           <div class="hero__actions">
-            <a class="button button--primary" href="#laboratorio">Abrir laboratório</a>
-            <button id="share-link" type="button" class="button button--ghost">Copiar link compartilhável</button>
+            <a class="button button--primary" href="#laboratorio">Iniciar laboratorio</a>
+            <button id="share-link" type="button" class="button button--ghost">Compartilhar estado</button>
           </div>
         </div>
-        <aside class="hero__stats" aria-label="Resumo técnico">
-          <p class="eyebrow">Capacidades</p>
-          <ul>
-            <li><span>8</span> tokens editáveis em tempo real</li>
-            <li><span>4</span> presets para acelerar criação</li>
-            <li><span>WCAG</span> AA e AAA com feedback imediato</li>
-          </ul>
+
+        <aside class="hero__metrics" aria-label="Indicadores de maturidade">
+          <p class="eyebrow">Quality Pulse</p>
+          <p id="ux-quality-label" class="hero__quality">Qualidade inicial</p>
+          <div class="hero__kpis">
+            <article>
+              <strong id="ux-contrast-score">0.00:1</strong>
+              <span>Contraste base</span>
+            </article>
+            <article>
+              <strong id="ux-library-count">0</strong>
+              <span>Paletas locais</span>
+            </article>
+            <article>
+              <strong id="ux-cloud-count">0</strong>
+              <span>Paletas cloud</span>
+            </article>
+          </div>
+          <p id="ux-stage-label" class="hero__stage">Jornada: Exploracao inicial</p>
         </aside>
+      </section>
+
+      <section class="panel journey" aria-label="Fluxo recomendado">
+        <div class="section-head">
+          <p class="eyebrow">Operacao Guiada</p>
+          <h2>Fluxo em 3 passos para reduzir retrabalho entre design e desenvolvimento</h2>
+          <p id="ux-quality-note">
+            Defina a base, audite contraste e publique somente quando o score de qualidade estiver consistente.
+          </p>
+        </div>
+        <div class="journey-grid">
+          <article class="journey-step" data-step="1">
+            <h3>1. Componha a paleta</h3>
+            <p>Edite os 8 tokens essenciais e gere harmonias automaticas para acelerar exploracao visual.</p>
+            <a href="#laboratorio">Editar tokens</a>
+          </article>
+          <article class="journey-step" data-step="2">
+            <h3>2. Audite com criterio</h3>
+            <p>Valide contraste em contexto, acompanhe score e trate pontos de risco antes do handoff.</p>
+            <a href="#acessibilidade">Executar auditoria</a>
+          </article>
+          <article class="journey-step" data-step="3">
+            <h3>3. Distribua com confianca</h3>
+            <p>Salve localmente, sincronize na API e compartilhe links publicos com rastreabilidade.</p>
+            <a href="#nuvem">Sincronizar nuvem</a>
+          </article>
+        </div>
       </section>
 
       <section class="workspace">
         <section id="laboratorio" class="panel">
           <div class="section-head">
-            <p class="eyebrow">Laboratório</p>
-            <h2>Editor de paleta</h2>
-            <p>Edite os tokens, use presets ou gere uma nova harmonia baseada na cor primária.</p>
+            <p class="eyebrow">Laboratorio</p>
+            <h2>Editor principal de paleta</h2>
+            <p>Controle fino de tokens, historico de alteracoes, presets e exportacao direta para engenharia.</p>
           </div>
 
           <div class="preset-list" aria-label="Presets de paleta">
             <button type="button" class="chip" data-preset="default">Base ARIA</button>
             <button type="button" class="chip" data-preset="ocean">Oceano</button>
-            <button type="button" class="chip" data-preset="sunset">Pôr do sol</button>
+            <button type="button" class="chip" data-preset="sunset">Por do sol</button>
             <button type="button" class="chip" data-preset="forest">Floresta</button>
           </div>
 
@@ -166,12 +207,12 @@
                 id="palette-name"
                 type="text"
                 maxlength="80"
-                placeholder="Ex.: Landing Product 2026"
+                placeholder="Ex.: Product Landing 2026"
                 autocomplete="off"
               />
             </div>
             <div class="actions palette-meta__actions">
-              <button id="save-palette" type="button" class="button button--secondary">Salvar na biblioteca</button>
+              <button id="save-palette" type="button" class="button button--secondary">Salvar biblioteca</button>
               <button id="update-saved-palette" type="button" class="button button--ghost" disabled>
                 Atualizar selecionada
               </button>
@@ -180,7 +221,7 @@
 
           <form id="palette-form" class="palette-form" novalidate>
             <div class="field">
-              <label for="primary-color">Primária</label>
+              <label for="primary-color">Primaria</label>
               <div class="field__controls">
                 <input id="primary-color" data-token="primary" type="color" />
                 <input id="primary-text" data-token-text="primary" type="text" inputmode="text" maxlength="7" />
@@ -188,7 +229,7 @@
             </div>
 
             <div class="field">
-              <label for="secondary-color">Secundária</label>
+              <label for="secondary-color">Secundaria</label>
               <div class="field__controls">
                 <input id="secondary-color" data-token="secondary" type="color" />
                 <input id="secondary-text" data-token-text="secondary" type="text" inputmode="text" maxlength="7" />
@@ -212,7 +253,7 @@
             </div>
 
             <div class="field">
-              <label for="surface-color">Superfície</label>
+              <label for="surface-color">Superficie</label>
               <div class="field__controls">
                 <input id="surface-color" data-token="surface" type="color" />
                 <input id="surface-text" data-token-text="surface" type="text" inputmode="text" maxlength="7" />
@@ -228,7 +269,7 @@
             </div>
 
             <div class="field">
-              <label for="muted-color">Texto secundário</label>
+              <label for="muted-color">Texto secundario</label>
               <div class="field__controls">
                 <input id="muted-color" data-token="muted" type="color" />
                 <input id="muted-text" data-token-text="muted" type="text" inputmode="text" maxlength="7" />
@@ -248,17 +289,17 @@
             <button id="undo-palette" type="button" class="button button--ghost">Desfazer</button>
             <button id="redo-palette" type="button" class="button button--ghost">Refazer</button>
             <button id="generate-harmony" type="button" class="button button--secondary">Gerar harmonia</button>
-            <button id="reset-palette" type="button" class="button button--ghost">Restaurar padrão</button>
+            <button id="reset-palette" type="button" class="button button--ghost">Restaurar padrao</button>
             <button id="copy-css" type="button" class="button button--ghost">Copiar CSS vars</button>
           </div>
           <p class="action-hint">Atalhos: <kbd>Ctrl/Cmd + Z</kbd> desfazer • <kbd>Ctrl/Cmd + Shift + Z</kbd> refazer</p>
         </section>
 
-        <section class="panel">
+        <section class="panel panel--sticky">
           <div class="section-head">
-            <p class="eyebrow">Visualização</p>
-            <h2>Amostras de tokens</h2>
-            <p>Copie cada valor e confira o nível de contraste da cor com o fundo principal.</p>
+            <p class="eyebrow">Preview ao vivo</p>
+            <h2>Leitura rapida dos tokens</h2>
+            <p>Confira contraste por token e copie valores individuais para uso imediato.</p>
           </div>
           <div id="swatch-grid" class="swatch-grid"></div>
         </section>
@@ -266,27 +307,37 @@
 
       <section id="biblioteca" class="panel">
         <div class="section-head">
-          <p class="eyebrow">Organização</p>
-          <h2>Biblioteca local de paletas</h2>
-          <p>Armazene variações para comparar conceitos e acelerar decisões visuais sem perder histórico.</p>
+          <p class="eyebrow">Biblioteca local</p>
+          <h2>Curadoria de versoes</h2>
+          <p>Organize variacoes da paleta e marque favoritas para acesso rapido durante iteracoes de produto.</p>
         </div>
+
         <div class="saved-toolbar">
           <p id="saved-summary" class="saved-summary">Nenhuma paleta salva ainda.</p>
-          <button id="clear-saved-palettes" type="button" class="button button--ghost">Limpar biblioteca</button>
+          <div class="saved-toolbar__actions">
+            <div class="saved-filters" role="group" aria-label="Filtro de biblioteca">
+              <button id="saved-filter-all" type="button" class="button button--ghost">Todas</button>
+              <button id="saved-filter-favorites" type="button" class="button button--ghost">Favoritas</button>
+            </div>
+            <button id="clear-saved-palettes" type="button" class="button button--ghost">Limpar biblioteca</button>
+          </div>
         </div>
+        <p id="saved-favorites-count" class="saved-favorites-count">0 favorita(s)</p>
+
         <div id="saved-palettes-list" class="saved-palettes" aria-live="polite"></div>
       </section>
 
       <section id="nuvem" class="panel">
         <div class="section-head">
-          <p class="eyebrow">Integração Fullstack</p>
-          <h2>Sincronização com API</h2>
-          <p>Conecte no backend para autenticar, publicar paletas e carregar seu acervo em nuvem.</p>
+          <p class="eyebrow">Integracao fullstack</p>
+          <h2>Sincronizacao com API</h2>
+          <p>Conecte usuario, publique paletas e mantenha o fluxo de distribuicao entre time e produto.</p>
         </div>
 
         <div class="cloud-layout">
           <article class="cloud-card">
-            <h3>Conexão e sessão</h3>
+            <h3>Conexao e sessao</h3>
+
             <div class="field">
               <label for="api-base-url">Base URL da API</label>
               <input id="api-base-url" type="text" inputmode="url" placeholder="http://localhost:3333" />
@@ -314,20 +365,20 @@
               <button id="api-logout" type="button" class="button button--ghost">Sair</button>
             </div>
 
-            <p id="api-session-status" class="cloud-status" aria-live="polite">Sessão desconectada.</p>
+            <p id="api-session-status" class="cloud-status" aria-live="polite">Sessao desconectada.</p>
           </article>
 
           <article class="cloud-card">
             <h3>Paletas na nuvem</h3>
-            <p class="cloud-helper">Publique a paleta atual e traga versões salvas da API para edição local.</p>
+            <p class="cloud-helper">Publique a paleta em edicao e sincronize rapidamente para comparacoes remotas.</p>
 
             <div class="field cloud-switch">
-              <label for="api-publish-public">Publicar como paleta pública (gera link)</label>
+              <label for="api-publish-public">Publicar como paleta publica (gera link)</label>
               <input id="api-publish-public" type="checkbox" />
             </div>
 
             <div class="actions">
-              <button id="api-publish-palette" type="button" class="button button--secondary">Publicar paleta atual</button>
+              <button id="api-publish-palette" type="button" class="button button--secondary">Publicar atual</button>
               <button id="api-sync-palettes" type="button" class="button button--ghost">Sincronizar nuvem</button>
             </div>
 
@@ -340,69 +391,92 @@
       <section id="acessibilidade" class="panel">
         <div class="section-head">
           <p class="eyebrow">Acessibilidade</p>
-          <h2>Verificador de contraste WCAG</h2>
-          <p>Teste qualquer combinação de texto e fundo com avaliação AA e AAA em tempo real.</p>
+          <h2>Validador WCAG e auditoria inteligente</h2>
+          <p>Combine checker manual com relatorio automatico para consolidar decisoes de contraste.</p>
         </div>
 
-        <div class="contrast-layout">
-          <div class="contrast-controls">
-            <label for="contrast-foreground">Cor do texto</label>
-            <input id="contrast-foreground" type="color" />
-            <input id="contrast-foreground-text" type="text" maxlength="7" />
+        <div class="contrast-audit-layout">
+          <article class="contrast-card">
+            <div class="contrast-layout">
+              <div class="contrast-controls">
+                <label for="contrast-foreground">Cor do texto</label>
+                <input id="contrast-foreground" type="color" />
+                <input id="contrast-foreground-text" type="text" maxlength="7" />
 
-            <label for="contrast-background">Cor do fundo</label>
-            <input id="contrast-background" type="color" />
-            <input id="contrast-background-text" type="text" maxlength="7" />
+                <label for="contrast-background">Cor do fundo</label>
+                <input id="contrast-background" type="color" />
+                <input id="contrast-background-text" type="text" maxlength="7" />
+
+                <div class="actions">
+                  <button id="swap-contrast" type="button" class="button button--ghost">Inverter</button>
+                  <button id="use-palette-contrast" type="button" class="button button--ghost">Usar tokens</button>
+                </div>
+              </div>
+
+              <div class="contrast-result">
+                <p class="ratio" id="contrast-ratio-value" aria-live="polite">0.00:1</p>
+                <ul class="compliance-list">
+                  <li>
+                    <span>Texto normal (AA)</span>
+                    <strong id="wcag-aa-normal" data-level="fail">Reprovado</strong>
+                  </li>
+                  <li>
+                    <span>Texto normal (AAA)</span>
+                    <strong id="wcag-aaa-normal" data-level="fail">Reprovado</strong>
+                  </li>
+                  <li>
+                    <span>Texto grande (AA)</span>
+                    <strong id="wcag-aa-large" data-level="fail">Reprovado</strong>
+                  </li>
+                  <li>
+                    <span>Texto grande (AAA)</span>
+                    <strong id="wcag-aaa-large" data-level="fail">Reprovado</strong>
+                  </li>
+                </ul>
+                <p id="contrast-preview" class="contrast-preview">
+                  Acessibilidade consistente reduz retrabalho e melhora experiencia para todos os usuarios.
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <article class="audit-card" aria-label="Auditoria automatizada da paleta atual">
+            <header class="audit-card__header">
+              <p class="eyebrow">Audit Engine</p>
+              <h3>Relatorio da paleta atual</h3>
+              <p id="audit-summary">Analise de contraste em execucao.</p>
+            </header>
+
+            <div class="audit-score-shell">
+              <strong id="audit-score">0</strong>
+              <span id="audit-grade" data-grade="CRITICO">CRITICO</span>
+            </div>
+
+            <ul id="audit-list" class="audit-list" aria-live="polite"></ul>
 
             <div class="actions">
-              <button id="swap-contrast" type="button" class="button button--ghost">Inverter</button>
-              <button id="use-palette-contrast" type="button" class="button button--ghost">Usar tokens</button>
+              <button id="copy-audit-report" type="button" class="button button--ghost">Copiar relatorio JSON</button>
             </div>
-          </div>
-
-          <div class="contrast-result">
-            <p class="ratio" id="contrast-ratio-value" aria-live="polite">0.00:1</p>
-            <ul class="compliance-list">
-              <li>
-                <span>Texto normal (AA)</span>
-                <strong id="wcag-aa-normal" data-level="fail">Reprovado</strong>
-              </li>
-              <li>
-                <span>Texto normal (AAA)</span>
-                <strong id="wcag-aaa-normal" data-level="fail">Reprovado</strong>
-              </li>
-              <li>
-                <span>Texto grande (AA)</span>
-                <strong id="wcag-aa-large" data-level="fail">Reprovado</strong>
-              </li>
-              <li>
-                <span>Texto grande (AAA)</span>
-                <strong id="wcag-aaa-large" data-level="fail">Reprovado</strong>
-              </li>
-            </ul>
-            <p id="contrast-preview" class="contrast-preview">
-              A acessibilidade não é opcional: ela melhora alcance, usabilidade e retenção do produto.
-            </p>
-          </div>
+          </article>
         </div>
       </section>
 
       <section id="componentes" class="panel">
         <div class="section-head">
-          <p class="eyebrow">Preview</p>
-          <h2>Componentes em contexto</h2>
-          <p>Valide rapidamente a aplicação da paleta em elementos comuns de produto.</p>
+          <p class="eyebrow">Simulacao de produto</p>
+          <h2>Componentes em contexto real</h2>
+          <p>Teste os tokens em blocos de interface antes de aprovar a versao final para producao.</p>
         </div>
 
         <div class="preview-grid">
           <article class="demo-card">
-            <p class="eyebrow">Card de produto</p>
-            <h3>Plano Profissional</h3>
-            <p>Ideal para equipes que precisam padronizar tokens e manter governança visual.</p>
+            <p class="eyebrow">Card de oferta</p>
+            <h3>Plano Professional</h3>
+            <p>Ideal para equipes que precisam de governanca visual, acessibilidade e consistencia de handoff.</p>
             <div class="demo-card__badges">
               <span>Design Tokens</span>
-              <span>WCAG</span>
-              <span>UI Kit</span>
+              <span>A11y</span>
+              <span>UI Governance</span>
             </div>
             <div class="actions">
               <button type="button" class="button button--primary">Ativar plano</button>
@@ -411,22 +485,23 @@
           </article>
 
           <aside class="demo-aside">
-            <h3>Checklist de qualidade</h3>
+            <h3>Checklist de release visual</h3>
             <ul>
-              <li>Contraste mínimo AA para texto e elementos críticos</li>
-              <li>Consistência visual em cards, botões e estados</li>
-              <li>Tokens versionáveis para escalar o design system</li>
+              <li>Texto com contraste AA no fluxo principal</li>
+              <li>Botao primario com destaque sem competir com alerta</li>
+              <li>Bordas e superficie com separacao clara entre blocos</li>
+              <li>Tokens exportados e versionados antes da publicacao</li>
             </ul>
-            <a href="#tokens">Ir para exportação de tokens</a>
+            <a href="#tokens">Ir para exportacao de tokens</a>
           </aside>
         </div>
       </section>
 
       <section id="tokens" class="panel">
         <div class="section-head">
-          <p class="eyebrow">Entrega</p>
-          <h2>Exportação de tokens</h2>
-          <p>Copie ou baixe os tokens no formato ideal para acelerar implementação.</p>
+          <p class="eyebrow">Handoff tecnico</p>
+          <h2>Exportacao de tokens</h2>
+          <p>Copie ou baixe JSON/CSS com os tokens prontos para integrar em projetos web e mobile.</p>
         </div>
 
         <div class="actions">
@@ -442,8 +517,8 @@
 
     <footer class="site-footer">
       <div class="container">
-        <p>Projeto estático, acessível e pronto para evoluir para um design system escalável.</p>
-        <small>Paleta de Cores ARIA • atualizado para produção front-end moderna</small>
+        <p>Paleta de Cores ARIA combina criacao, auditoria e distribuicao para operacao de design system em escala.</p>
+        <small>Studio fullstack para UX consistente, performance e acessibilidade.</small>
       </div>
     </footer>
 

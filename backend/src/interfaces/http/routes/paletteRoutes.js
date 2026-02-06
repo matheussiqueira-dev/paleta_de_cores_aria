@@ -16,12 +16,18 @@ function buildPaletteRoutes(dependencies) {
   const router = express.Router();
   const { paletteController, authMiddleware } = dependencies;
 
+  router.get(
+    "/public/:shareId/audit",
+    validate(publicPaletteParamsSchema, "params"),
+    asyncHandler(paletteController.publicAuditByShareId)
+  );
   router.get("/public/:shareId", validate(publicPaletteParamsSchema, "params"), asyncHandler(paletteController.publicByShareId));
 
   router.use(authMiddleware);
 
   router.get("/", validate(listQuerySchema, "query"), asyncHandler(paletteController.list));
   router.get("/analytics/summary", asyncHandler(paletteController.analytics));
+  router.get("/:paletteId/audit", validate(paletteParamsSchema, "params"), asyncHandler(paletteController.audit));
   router.post("/", validate(createPaletteBodySchema), asyncHandler(paletteController.create));
   router.post("/import", validate(importPaletteBodySchema), asyncHandler(paletteController.import));
   router.get("/:paletteId", validate(paletteParamsSchema, "params"), asyncHandler(paletteController.getById));

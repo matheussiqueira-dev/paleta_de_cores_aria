@@ -88,6 +88,22 @@ class PaletteController {
     });
   };
 
+  audit = async (req, res) => {
+    const result = await this.paletteService.auditForUser(req.auth.userId, req.params.paletteId);
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  };
+
+  publicAuditByShareId = async (req, res) => {
+    const result = await this.paletteService.auditPublicByShareId(req.params.shareId);
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  };
+
   analytics = async (req, res) => {
     const result = await this.paletteService.getAnalyticsSummary(req.auth.userId);
     res.status(200).json({

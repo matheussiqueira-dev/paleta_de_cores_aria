@@ -60,6 +60,22 @@ const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
   offset: z.coerce.number().int().min(0).max(10000).optional(),
   search: z.string().trim().max(120).optional(),
+  visibility: z.enum(["all", "public", "private"]).optional(),
+  tags: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((value) => {
+      if (!value) {
+        return [];
+      }
+      const values = Array.isArray(value) ? value : value.split(",");
+      return values
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+        .slice(0, 8);
+    }),
+  sortBy: z.enum(["updatedAt", "createdAt", "name"]).optional(),
+  sortDir: z.enum(["asc", "desc"]).optional(),
 });
 
 module.exports = {

@@ -69,7 +69,15 @@ class FileDatabase {
 
   async #flushToDisk() {
     const payload = JSON.stringify(this.state, null, 2);
-    await fs.writeFile(this.filePath, payload, "utf8");
+    const directory = path.dirname(this.filePath);
+    const temporaryFile = path.join(directory, `.tmp-${path.basename(this.filePath)}-${randomUUID()}.json`);
+
+    try {
+      await fs.writeFile(temporaryFile, payload, "utf8");
+      await fs.rename(temporaryFile, this.filePath);
+    } finally {
+      await fs.rm(temporaryFile, { force: true }).catch(() => undefined);
+    }
   }
 
   #createDefaultState() {

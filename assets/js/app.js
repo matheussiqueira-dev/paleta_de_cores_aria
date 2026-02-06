@@ -5,6 +5,7 @@
     palette: "aria.palette.v2",
     themeMode: "aria.themeMode",
     savedPalettes: "aria.savedPalettes.v1",
+    savedPaletteFilter: "aria.savedPalettes.filter.v1",
     apiConfig: "aria.api.config.v1",
     apiSession: "aria.api.session.v1",
   };
@@ -67,6 +68,65 @@
     },
   });
 
+  const AUDIT_CHECKS = Object.freeze([
+    {
+      id: "text_on_background",
+      label: "Texto principal sobre fundo",
+      foreground: "text",
+      background: "background",
+      threshold: 4.5,
+      weight: 30,
+    },
+    {
+      id: "text_on_surface",
+      label: "Texto principal sobre superfície",
+      foreground: "text",
+      background: "surface",
+      threshold: 4.5,
+      weight: 30,
+    },
+    {
+      id: "muted_on_background",
+      label: "Texto secundário sobre fundo",
+      foreground: "muted",
+      background: "background",
+      threshold: 4.5,
+      weight: 15,
+    },
+    {
+      id: "primary_on_background",
+      label: "Primária sobre fundo",
+      foreground: "primary",
+      background: "background",
+      threshold: 3,
+      weight: 8,
+    },
+    {
+      id: "secondary_on_background",
+      label: "Secundária sobre fundo",
+      foreground: "secondary",
+      background: "background",
+      threshold: 3,
+      weight: 8,
+    },
+    {
+      id: "accent_on_background",
+      label: "Acento sobre fundo",
+      foreground: "accent",
+      background: "background",
+      threshold: 3,
+      weight: 8,
+    },
+    {
+      id: "border_on_background",
+      label: "Borda sobre fundo",
+      foreground: "border",
+      background: "background",
+      threshold: 1.5,
+      weight: 1,
+    },
+  ]);
+
   const state = {
     palette: { ...DEFAULT_PALETTE },
     paletteName: "Paleta em edição",
@@ -82,6 +142,7 @@
       index: -1,
     },
     savedPalettes: [],
+    savedPaletteFilter: "all",
     selectedSavedPaletteId: null,
     api: {
       baseUrl: "",
@@ -112,6 +173,9 @@
     savePaletteButton: document.getElementById("save-palette"),
     updateSavedPaletteButton: document.getElementById("update-saved-palette"),
     clearSavedPalettesButton: document.getElementById("clear-saved-palettes"),
+    savedFilterAllButton: document.getElementById("saved-filter-all"),
+    savedFilterFavoritesButton: document.getElementById("saved-filter-favorites"),
+    savedFavoritesCount: document.getElementById("saved-favorites-count"),
     savedSummary: document.getElementById("saved-summary"),
     savedPalettesList: document.getElementById("saved-palettes-list"),
     contrastForeground: document.getElementById("contrast-foreground"),
@@ -155,6 +219,19 @@
     apiSyncPalettesButton: document.getElementById("api-sync-palettes"),
     apiCloudSummary: document.getElementById("api-cloud-summary"),
     apiCloudPalettesList: document.getElementById("api-cloud-palettes-list"),
+    uxQualityLabel: document.getElementById("ux-quality-label"),
+    uxContrastScore: document.getElementById("ux-contrast-score"),
+    uxLibraryCount: document.getElementById("ux-library-count"),
+    uxCloudCount: document.getElementById("ux-cloud-count"),
+    uxStageLabel: document.getElementById("ux-stage-label"),
+    uxQualityNote: document.getElementById("ux-quality-note"),
+    auditScore: document.getElementById("audit-score"),
+    auditGrade: document.getElementById("audit-grade"),
+    auditSummary: document.getElementById("audit-summary"),
+    auditList: document.getElementById("audit-list"),
+    copyAuditButton: document.getElementById("copy-audit-report"),
+    journeySteps: Array.from(document.querySelectorAll(".journey-step")),
+    revealPanels: Array.from(document.querySelectorAll(".panel")),
   };
 
   init();
@@ -164,6 +241,7 @@
     hydrateStateFromStorage();
     hydrateStateFromQuery();
     hydrateSavedPalettesFromStorage();
+    hydrateSavedPaletteFilter();
     hydrateApiStateFromStorage();
 
     initializeHistory(state.palette);
@@ -183,7 +261,10 @@
     renderCloudPalettes();
     updateApiSessionStatus();
     updateApiControls();
+    configureInputAccessibility();
+    updateExperienceInsights();
     bindSectionTracking();
+    setupRevealAnimations();
     bootstrapApiSession();
   }
 
@@ -360,6 +441,25 @@
     if (elements.clearSavedPalettesButton) {
       elements.clearSavedPalettesButton.addEventListener("click", () => {
         clearSavedPalettes();
+      });
+    }
+
+    if (elements.savedFilterAllButton) {
+      elements.savedFilterAllButton.addEventListener("click", () => {
+        setSavedPaletteFilter("all");
+      });
+    }
+
+    if (elements.savedFilterFavoritesButton) {
+      elements.savedFilterFavoritesButton.addEventListener("click", () => {
+        setSavedPaletteFilter("favorites");
+      });
+    }
+
+    if (elements.copyAuditButton) {
+      elements.copyAuditButton.addEventListener("click", () => {
+        const auditReport = buildPaletteAuditReport(state.palette);
+        copyText(JSON.stringify(auditReport, null, 2), "Relatório de auditoria copiado.");
       });
     }
 
@@ -896,6 +996,7 @@
       palette: sanitizePalette(entry.tokens, DEFAULT_PALETTE),
       createdAt: now,
       updatedAt: now,
+      isFavorite: false,
     };
 
     state.savedPalettes = [localEntry, ...state.savedPalettes].slice(0, 30);
@@ -1282,6 +1383,214 @@
     setActive(sectionHashes[0]);
   }
 
+  function setupRevealAnimations() {
+    const revealTargets = [...elements.revealPanels, ...elements.journeySteps].filter((target) => target instanceof HTMLElement);
+    if (revealTargets.length === 0) {
+      return;
+    }
+
+    revealTargets.forEach((target) => {
+      target.classList.add("is-reveal");
+    });
+
+    if (typeof IntersectionObserver !== "function") {
+      revealTargets.forEach((target) => {
+        target.classList.add("is-visible");
+      });
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        rootMargin: "0px 0px -8% 0px",
+        threshold: 0.18,
+      }
+    );
+
+    revealTargets.forEach((target) => observer.observe(target));
+  }
+
+  function configureInputAccessibility() {
+    const tokenLabelMap = new Map(TOKEN_META.map((tokenMeta) => [tokenMeta.key, tokenMeta.name]));
+
+    elements.hexInputs.forEach((input) => {
+      const token = input.dataset.tokenText;
+      if (!token) {
+        return;
+      }
+      const tokenName = tokenLabelMap.get(token) || token;
+      input.setAttribute("aria-label", `Valor hexadecimal do token ${tokenName}`);
+      input.setAttribute("autocomplete", "off");
+      input.setAttribute("spellcheck", "false");
+      input.setAttribute("pattern", "^#?[0-9A-Fa-f]{3,6}$");
+    });
+
+    elements.contrastForegroundText?.setAttribute("aria-label", "Valor hexadecimal da cor de texto no checker");
+    elements.contrastForegroundText?.setAttribute("pattern", "^#?[0-9A-Fa-f]{3,6}$");
+    elements.contrastBackgroundText?.setAttribute("aria-label", "Valor hexadecimal da cor de fundo no checker");
+    elements.contrastBackgroundText?.setAttribute("pattern", "^#?[0-9A-Fa-f]{3,6}$");
+  }
+
+  function updateExperienceInsights() {
+    const liveContrastRatio = contrastRatio(state.contrast.foreground, state.contrast.background);
+    const tokenContrastRatio = contrastRatio(state.palette.text, state.palette.background);
+    const localCount = state.savedPalettes.length;
+    const favoritesCount = state.savedPalettes.filter((entry) => entry.isFavorite).length;
+    const cloudCount = state.api.cloudPalettes.length;
+    const authenticated = isApiAuthenticated();
+    const auditReport = buildPaletteAuditReport(state.palette);
+    const auditScore = auditReport?.audit?.score ?? 0;
+
+    const score = clamp(Math.round(auditScore * 0.72 + (Math.min(liveContrastRatio, 7) / 7) * 20 + Math.min(localCount, 8)), 0, 100);
+
+    let qualityLabel = "Qualidade inicial";
+    if (score >= 85) {
+      qualityLabel = "Qualidade elevada";
+    } else if (score >= 65) {
+      qualityLabel = "Qualidade consistente";
+    } else if (score >= 45) {
+      qualityLabel = "Qualidade em evolução";
+    }
+
+    let stageLabel = "Jornada: Exploração inicial";
+    if (favoritesCount > 0 && !authenticated) {
+      stageLabel = "Jornada: Curadoria local";
+    } else if (localCount > 0 && !authenticated) {
+      stageLabel = "Jornada: Validação local";
+    } else if (authenticated && cloudCount === 0) {
+      stageLabel = "Jornada: Publicação em nuvem";
+    } else if (authenticated && cloudCount > 0) {
+      stageLabel = "Jornada: Operação sincronizada";
+    }
+
+    if (elements.uxQualityLabel) {
+      elements.uxQualityLabel.textContent = `${qualityLabel} · Score ${score}/100`;
+    }
+    if (elements.uxContrastScore) {
+      elements.uxContrastScore.textContent = `${tokenContrastRatio.toFixed(2)}:1`;
+    }
+    if (elements.uxLibraryCount) {
+      elements.uxLibraryCount.textContent = String(localCount);
+    }
+    if (elements.uxCloudCount) {
+      elements.uxCloudCount.textContent = String(cloudCount);
+    }
+    if (elements.uxStageLabel) {
+      elements.uxStageLabel.textContent = stageLabel;
+    }
+    if (elements.uxQualityNote) {
+      const failingChecks = auditReport?.audit?.failingChecks ?? 0;
+      elements.uxQualityNote.textContent =
+        failingChecks === 0
+          ? "Auditoria local sem pendências críticas. Fluxo pronto para publicar e compartilhar."
+          : `Auditoria detectou ${failingChecks} ponto(s) de risco. Priorize contraste entre texto, superfície e fundo.`;
+    }
+  }
+
+  function renderPaletteAudit() {
+    const report = buildPaletteAuditReport(state.palette);
+    const audit = report.audit;
+    if (!audit) {
+      return;
+    }
+
+    if (elements.auditScore) {
+      elements.auditScore.textContent = `${Math.round(audit.score)}`;
+    }
+    if (elements.auditGrade) {
+      elements.auditGrade.textContent = audit.grade;
+      elements.auditGrade.dataset.grade = audit.grade;
+    }
+    if (elements.auditSummary) {
+      elements.auditSummary.textContent =
+        audit.failingChecks === 0
+          ? "Todos os checkpoints auditados estão dentro do alvo."
+          : `${audit.failingChecks} checkpoint(s) requer(em) ajuste para reduzir risco de acessibilidade.`;
+    }
+
+    if (!elements.auditList) {
+      return;
+    }
+
+    elements.auditList.innerHTML = "";
+    audit.checks.forEach((item) => {
+      const row = document.createElement("li");
+      row.className = "audit-item";
+      row.dataset.level = item.passed ? "pass" : item.ratio >= item.threshold * 0.9 ? "warn" : "fail";
+
+      const label = document.createElement("p");
+      label.className = "audit-item__label";
+      label.textContent = item.label;
+
+      const metrics = document.createElement("p");
+      metrics.className = "audit-item__metric";
+      metrics.textContent = `${item.ratio.toFixed(2)}:1 (alvo ${item.threshold}:1)`;
+
+      row.appendChild(label);
+      row.appendChild(metrics);
+      elements.auditList.appendChild(row);
+    });
+  }
+
+  function buildPaletteAuditReport(palette) {
+    const checks = AUDIT_CHECKS.map((check) => {
+      const ratio = contrastRatio(palette[check.foreground], palette[check.background]);
+      const passed = ratio >= check.threshold;
+      const score = Math.min(1, ratio / check.threshold) * check.weight;
+      return {
+        id: check.id,
+        label: check.label,
+        foregroundToken: check.foreground,
+        backgroundToken: check.background,
+        foreground: palette[check.foreground],
+        background: palette[check.background],
+        threshold: check.threshold,
+        ratio: Number(ratio.toFixed(2)),
+        passed,
+        score: Number(score.toFixed(2)),
+      };
+    });
+
+    const score = Number(checks.reduce((accumulator, item) => accumulator + item.score, 0).toFixed(2));
+    const failingChecks = checks.filter((item) => !item.passed).length;
+
+    return {
+      palette: {
+        name: sanitizePaletteName(state.paletteName) || "Paleta sem nome",
+        generatedAt: new Date().toISOString(),
+        tokens: getPaletteSnapshot(palette),
+      },
+      audit: {
+        score,
+        grade: resolveAuditGrade(score),
+        checks,
+        totalChecks: checks.length,
+        failingChecks,
+      },
+    };
+  }
+
+  function resolveAuditGrade(score) {
+    if (score >= 90) {
+      return "EXCELENTE";
+    }
+    if (score >= 75) {
+      return "CONSISTENTE";
+    }
+    if (score >= 55) {
+      return "ATENCAO";
+    }
+    return "CRITICO";
+  }
+
   function commitHexInput(input) {
     if (!input) {
       return;
@@ -1366,6 +1675,7 @@
 
     renderSwatches();
     updateTokenOutput();
+    renderPaletteAudit();
     updateContrast();
     updateBrowserChrome(resolveThemeMode(state.themeMode));
 
@@ -1373,6 +1683,7 @@
       safeStorageSet(STORAGE_KEYS.palette, JSON.stringify(state.palette));
     }
     updateHistoryButtons();
+    updateExperienceInsights();
   }
 
   function syncPaletteInputs() {
@@ -1584,6 +1895,8 @@
       elements.contrastPreview.style.color = state.contrast.foreground;
       elements.contrastPreview.style.borderColor = pickReadableTextColor(state.contrast.background, 0.65);
     }
+
+    updateExperienceInsights();
   }
 
   function applyWcagResult(element, isPass) {
@@ -1787,6 +2100,12 @@
     }
   }
 
+  function hydrateSavedPaletteFilter() {
+    const raw = safeStorageGet(STORAGE_KEYS.savedPaletteFilter);
+    const normalized = raw === "favorites" ? "favorites" : "all";
+    state.savedPaletteFilter = normalized;
+  }
+
   function normalizeSavedPaletteEntry(entry) {
     if (!entry || typeof entry !== "object") {
       return null;
@@ -1804,6 +2123,7 @@
       palette,
       createdAt,
       updatedAt,
+      isFavorite: entry.isFavorite === true,
     };
   }
 
@@ -1816,6 +2136,18 @@
 
   function persistSavedPalettes() {
     safeStorageSet(STORAGE_KEYS.savedPalettes, JSON.stringify(state.savedPalettes));
+  }
+
+  function persistSavedPaletteFilter() {
+    safeStorageSet(STORAGE_KEYS.savedPaletteFilter, state.savedPaletteFilter);
+  }
+
+  function setSavedPaletteFilter(filter) {
+    const normalized = filter === "favorites" ? "favorites" : "all";
+    state.savedPaletteFilter = normalized;
+    persistSavedPaletteFilter();
+    renderSavedPalettes();
+    updateSavedPaletteControls();
   }
 
   function sanitizePaletteName(name) {
@@ -1844,6 +2176,7 @@
       palette: getPaletteSnapshot(state.palette),
       createdAt: now,
       updatedAt: now,
+      isFavorite: false,
     };
 
     state.savedPalettes = [entry, ...state.savedPalettes].slice(0, 30);
@@ -1921,6 +2254,20 @@
     showToast("Paleta removida da biblioteca.");
   }
 
+  function toggleSavedPaletteFavorite(id) {
+    const target = state.savedPalettes.find((entry) => entry.id === id);
+    if (!target) {
+      return;
+    }
+
+    target.isFavorite = !target.isFavorite;
+    target.updatedAt = new Date().toISOString();
+    persistSavedPalettes();
+    renderSavedPalettes();
+    updateSavedPaletteControls();
+    showToast(target.isFavorite ? "Paleta adicionada aos favoritos." : "Paleta removida dos favoritos.");
+  }
+
   function clearSavedPalettes() {
     if (state.savedPalettes.length === 0) {
       showToast("A biblioteca já está vazia.");
@@ -1948,6 +2295,15 @@
       elements.clearSavedPalettesButton.disabled = !hasItems;
       elements.clearSavedPalettesButton.setAttribute("aria-disabled", String(!hasItems));
     }
+
+    if (elements.savedFilterFavoritesButton) {
+      const hasFavorites = state.savedPalettes.some((entry) => entry.isFavorite);
+      elements.savedFilterFavoritesButton.disabled = !hasFavorites;
+      elements.savedFilterFavoritesButton.setAttribute("aria-disabled", String(!hasFavorites));
+      if (!hasFavorites && state.savedPaletteFilter === "favorites") {
+        setSavedPaletteFilter("all");
+      }
+    }
   }
 
   function renderSavedPalettes() {
@@ -1955,13 +2311,48 @@
       return;
     }
 
+    const totalCount = state.savedPalettes.length;
+    const favoritesCount = state.savedPalettes.filter((entry) => entry.isFavorite).length;
+    const sortedEntries = [...state.savedPalettes].sort((left, right) => {
+      const favoriteDelta = Number(Boolean(right.isFavorite)) - Number(Boolean(left.isFavorite));
+      if (favoriteDelta !== 0) {
+        return favoriteDelta;
+      }
+      const leftUpdatedAt = Date.parse(left.updatedAt || "");
+      const rightUpdatedAt = Date.parse(right.updatedAt || "");
+      const safeLeft = Number.isFinite(leftUpdatedAt) ? leftUpdatedAt : 0;
+      const safeRight = Number.isFinite(rightUpdatedAt) ? rightUpdatedAt : 0;
+      return safeRight - safeLeft;
+    });
+
+    const visibleEntries =
+      state.savedPaletteFilter === "favorites" ? sortedEntries.filter((entry) => entry.isFavorite) : sortedEntries;
+
+    if (elements.savedFilterAllButton) {
+      const active = state.savedPaletteFilter === "all";
+      elements.savedFilterAllButton.classList.toggle("is-active", active);
+      elements.savedFilterAllButton.setAttribute("aria-pressed", String(active));
+    }
+    if (elements.savedFilterFavoritesButton) {
+      const active = state.savedPaletteFilter === "favorites";
+      elements.savedFilterFavoritesButton.classList.toggle("is-active", active);
+      elements.savedFilterFavoritesButton.setAttribute("aria-pressed", String(active));
+    }
+    if (elements.savedFavoritesCount) {
+      elements.savedFavoritesCount.textContent = `${favoritesCount} favorita(s)`;
+    }
+
     elements.savedPalettesList.innerHTML = "";
-    if (state.savedPalettes.length === 0) {
+    if (visibleEntries.length === 0) {
       const empty = document.createElement("p");
       empty.className = "saved-empty";
-      empty.textContent = "Salve variações da sua paleta para comparar ideias e acelerar decisões de design.";
+      empty.textContent =
+        state.savedPaletteFilter === "favorites"
+          ? "Nenhuma paleta favorita ainda. Marque as melhores versões para acesso rápido."
+          : "Salve variações da sua paleta para comparar ideias e acelerar decisões de design.";
       elements.savedPalettesList.appendChild(empty);
-      elements.savedSummary.textContent = "Nenhuma paleta salva ainda.";
+      elements.savedSummary.textContent =
+        state.savedPaletteFilter === "favorites" ? "Filtro ativo: apenas favoritas." : "Nenhuma paleta salva ainda.";
       return;
     }
 
@@ -1970,13 +2361,19 @@
       timeStyle: "short",
     });
 
-    elements.savedSummary.textContent = `${state.savedPalettes.length} paleta(s) armazenada(s) localmente.`;
+    elements.savedSummary.textContent =
+      state.savedPaletteFilter === "favorites"
+        ? `${visibleEntries.length} favorita(s) exibida(s) de ${totalCount} paleta(s).`
+        : `${totalCount} paleta(s) armazenada(s) localmente.`;
 
-    state.savedPalettes.forEach((entry) => {
+    visibleEntries.forEach((entry) => {
       const card = document.createElement("article");
       card.className = "saved-card";
       if (entry.id === state.selectedSavedPaletteId) {
         card.classList.add("is-selected");
+      }
+      if (entry.isFavorite) {
+        card.classList.add("is-favorite");
       }
 
       const header = document.createElement("header");
@@ -1985,7 +2382,7 @@
       const titleWrap = document.createElement("div");
       const title = document.createElement("h3");
       title.className = "saved-card__title";
-      title.textContent = entry.name;
+      title.textContent = entry.isFavorite ? `★ ${entry.name}` : entry.name;
       const time = document.createElement("p");
       time.className = "saved-card__time";
       const timestamp = new Date(entry.updatedAt);
@@ -2024,7 +2421,16 @@
         deleteSavedPaletteById(entry.id);
       });
 
+      const favoriteButton = document.createElement("button");
+      favoriteButton.type = "button";
+      favoriteButton.className = "button button--ghost";
+      favoriteButton.textContent = entry.isFavorite ? "Desfavoritar" : "Favoritar";
+      favoriteButton.addEventListener("click", () => {
+        toggleSavedPaletteFavorite(entry.id);
+      });
+
       actions.appendChild(applyButton);
+      actions.appendChild(favoriteButton);
       actions.appendChild(removeButton);
 
       card.appendChild(header);
