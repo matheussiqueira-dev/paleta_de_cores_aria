@@ -50,6 +50,7 @@
   --status-fail-text: #7f1c22;
 
   --motion-base: 180ms ease;
+  --vision-filter: none;
 }
 
 :root[data-theme="dark"] {
@@ -571,7 +572,8 @@ input[type="color"] {
 input[type="text"],
 input[type="email"],
 input[type="url"],
-input[type="password"] {
+input[type="password"],
+select {
   width: 100%;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xs);
@@ -586,9 +588,23 @@ input[type="password"] {
 input[type="text"].is-invalid,
 input[type="email"].is-invalid,
 input[type="url"].is-invalid,
-input[type="password"].is-invalid {
+input[type="password"].is-invalid,
+select.is-invalid {
   border-color: #d2484f;
   box-shadow: 0 0 0 3px rgba(210, 72, 79, 0.2);
+}
+
+select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-muted) 50%),
+    linear-gradient(135deg, var(--color-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 2px),
+    calc(100% - 12px) calc(50% - 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 2rem;
 }
 
 .actions {
@@ -1038,6 +1054,29 @@ input[type="password"].is-invalid {
   font-size: 0.88rem;
 }
 
+.vision-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 260px) 1fr;
+  align-items: center;
+  gap: 0.62rem;
+  margin-bottom: 0.8rem;
+}
+
+.vision-toolbar label {
+  font-size: 0.81rem;
+  font-weight: 800;
+}
+
+.vision-toolbar__status {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+.vision-sensitive {
+  filter: var(--vision-filter);
+  transition: filter var(--motion-base);
+}
+
 .audit-card {
   display: grid;
   gap: 0.68rem;
@@ -1252,6 +1291,7 @@ input[type="password"].is-invalid {
 .button:focus-visible,
 .chip:focus-visible,
 input:focus-visible,
+select:focus-visible,
 .swatch-copy:focus-visible,
 .journey-step a:focus-visible,
 .demo-aside a:focus-visible {
@@ -1339,7 +1379,8 @@ input:focus-visible,
   }
 
   .hero__kpis,
-  .contrast-controls {
+  .contrast-controls,
+  .vision-toolbar {
     grid-template-columns: 1fr;
   }
 

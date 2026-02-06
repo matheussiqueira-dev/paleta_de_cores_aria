@@ -4,6 +4,7 @@
   const STORAGE_KEYS = {
     palette: "aria.palette.v2",
     themeMode: "aria.themeMode",
+    visionMode: "aria.visionMode",
     savedPalettes: "aria.savedPalettes.v1",
     savedPaletteFilter: "aria.savedPalettes.filter.v1",
     apiConfig: "aria.api.config.v1",
@@ -11,6 +12,7 @@
   };
 
   const THEME_MODES = ["light", "dark", "system"];
+  const VISION_MODES = ["none", "protanopia", "deuteranopia", "tritanopia", "achromatopsia"];
 
   const TOKEN_META = [
     { key: "primary", name: "Primária", hint: "Ações principais" },
@@ -131,6 +133,7 @@
     palette: { ...DEFAULT_PALETTE },
     paletteName: "Paleta em edição",
     themeMode: "system",
+    visionMode: "none",
     contrast: {
       foreground: DEFAULT_PALETTE.text,
       background: DEFAULT_PALETTE.background,
@@ -154,9 +157,12 @@
     },
   };
 
+  const colorInputByToken = new Map();
+  const hexInputByToken = new Map();
   const swatchCards = {};
   let mediaQueryList = null;
   let toastTimer = null;
+  let palettePersistTimer = null;
 
   const elements = {
     root: document.documentElement,
@@ -201,6 +207,7 @@
     importJsonFile: document.getElementById("import-json-file"),
     swapContrastButton: document.getElementById("swap-contrast"),
     usePaletteContrastButton: document.getElementById("use-palette-contrast"),
+    autoFixContrastButton: document.getElementById("auto-fix-contrast"),
     mobileMenuToggle: document.getElementById("mobile-menu-toggle"),
     mobileMenuPanel: document.getElementById("mobile-menu-panel"),
     mobileMenuLinks: Array.from(document.querySelectorAll("#mobile-menu-panel a")),
@@ -230,6 +237,8 @@
     auditSummary: document.getElementById("audit-summary"),
     auditList: document.getElementById("audit-list"),
     copyAuditButton: document.getElementById("copy-audit-report"),
+    visionModeSelect: document.getElementById("vision-mode-select"),
+    visionModeStatus: document.getElementById("vision-mode-status"),
     journeySteps: Array.from(document.querySelectorAll(".journey-step")),
     revealPanels: Array.from(document.querySelectorAll(".panel")),
   };
@@ -238,7 +247,9 @@
 
   function init() {
     state.api.baseUrl = getDefaultApiBaseUrl();
+    cachePaletteInputRefs();
     hydrateStateFromStorage();
+    hydrateVisionModeFromStorage();
     hydrateStateFromQuery();
     hydrateSavedPalettesFromStorage();
     hydrateSavedPaletteFilter();
@@ -249,6 +260,7 @@
     bindEvents();
 
     applyTheme(state.themeMode, false);
+    applyVisionMode(state.visionMode, false);
     applyPalette(state.palette, { persist: false, syncInputs: true, pushHistory: false });
     syncContrastInputs();
     updateContrast();
@@ -266,6 +278,25 @@
     bindSectionTracking();
     setupRevealAnimations();
     bootstrapApiSession();
+  }
+
+  function cachePaletteInputRefs() {
+    colorInputByToken.clear();
+    hexInputByToken.clear();
+
+    elements.colorInputs.forEach((input) => {
+      const token = input.dataset.token;
+      if (token) {
+        colorInputByToken.set(token, input);
+      }
+    });
+
+    elements.hexInputs.forEach((input) => {
+      const token = input.dataset.tokenText;
+      if (token) {
+        hexInputByToken.set(token, input);
+      }
+    });
   }
 
   function bindEvents() {
@@ -463,6 +494,16 @@
       });
     }
 
+    if (elements.visionModeSelect) {
+      elements.visionModeSelect.addEventListener("change", () => {
+        applyVisionMode(elements.visionModeSelect.value, true);
+      });
+    }
+
+    window.addEventListener("beforeunload", () => {
+      flushPalettePersist();
+    });
+
     bindContrastControls();
     observeSystemTheme();
     bindKeyboardShortcuts();
@@ -522,6 +563,12 @@
         syncContrastInputs();
         updateContrast();
         showToast("Checker sincronizado com os tokens de texto e fundo.");
+      });
+    }
+
+    if (elements.autoFixContrastButton) {
+      elements.autoFixContrastButton.addEventListener("click", () => {
+        autoFixPaletteContrast();
       });
     }
   }
@@ -1437,6 +1484,11 @@
     elements.contrastForegroundText?.setAttribute("pattern", "^#?[0-9A-Fa-f]{3,6}$");
     elements.contrastBackgroundText?.setAttribute("aria-label", "Valor hexadecimal da cor de fundo no checker");
     elements.contrastBackgroundText?.setAttribute("pattern", "^#?[0-9A-Fa-f]{3,6}$");
+    elements.autoFixContrastButton?.setAttribute(
+      "aria-label",
+      "Corrigir automaticamente contraste da cor de texto para atingir nivel AA"
+    );
+    elements.visionModeSelect?.setAttribute("aria-label", "Selecionar simulacao de deficiencia de visao");
   }
 
   function updateExperienceInsights() {
@@ -1680,35 +1732,17 @@
     updateBrowserChrome(resolveThemeMode(state.themeMode));
 
     if (settings.persist) {
-      safeStorageSet(STORAGE_KEYS.palette, JSON.stringify(state.palette));
+      schedulePalettePersist();
     }
     updateHistoryButtons();
     updateExperienceInsights();
   }
 
   function syncPaletteInputs() {
-    const byTokenColor = new Map();
-    elements.colorInputs.forEach((input) => {
-      const token = input.dataset.token;
-      if (!token) {
-        return;
-      }
-      byTokenColor.set(token, input);
-    });
-
-    const byTokenText = new Map();
-    elements.hexInputs.forEach((input) => {
-      const token = input.dataset.tokenText;
-      if (!token) {
-        return;
-      }
-      byTokenText.set(token, input);
-    });
-
     TOKEN_META.forEach((tokenMeta) => {
       const value = state.palette[tokenMeta.key];
-      const colorInput = byTokenColor.get(tokenMeta.key);
-      const textInput = byTokenText.get(tokenMeta.key);
+      const colorInput = colorInputByToken.get(tokenMeta.key);
+      const textInput = hexInputByToken.get(tokenMeta.key);
       if (colorInput) {
         colorInput.value = value;
       }
@@ -1837,6 +1871,56 @@
     }
   }
 
+  function applyVisionMode(mode, persist) {
+    const normalizedMode = VISION_MODES.includes(mode) ? mode : "none";
+    state.visionMode = normalizedMode;
+
+    const filter = resolveVisionFilter(normalizedMode);
+    elements.root.style.setProperty("--vision-filter", filter);
+
+    if (elements.visionModeSelect) {
+      elements.visionModeSelect.value = normalizedMode;
+    }
+    if (elements.visionModeStatus) {
+      elements.visionModeStatus.textContent =
+        normalizedMode === "none" ? "Simulacao desativada." : `Simulacao ativa: ${getVisionModeLabel(normalizedMode)}.`;
+    }
+
+    if (persist) {
+      safeStorageSet(STORAGE_KEYS.visionMode, normalizedMode);
+    }
+  }
+
+  function resolveVisionFilter(mode) {
+    switch (mode) {
+      case "protanopia":
+        return "url(#vision-protanopia)";
+      case "deuteranopia":
+        return "url(#vision-deuteranopia)";
+      case "tritanopia":
+        return "url(#vision-tritanopia)";
+      case "achromatopsia":
+        return "url(#vision-achromatopsia)";
+      default:
+        return "none";
+    }
+  }
+
+  function getVisionModeLabel(mode) {
+    switch (mode) {
+      case "protanopia":
+        return "Protanopia";
+      case "deuteranopia":
+        return "Deuteranopia";
+      case "tritanopia":
+        return "Tritanopia";
+      case "achromatopsia":
+        return "Acromatopsia";
+      default:
+        return "Padrao";
+    }
+  }
+
   function setActiveThemeButton(mode) {
     elements.themeButtons.forEach((button) => {
       const isActive = button.dataset.themeMode === mode;
@@ -1897,6 +1981,64 @@
     }
 
     updateExperienceInsights();
+  }
+
+  function autoFixPaletteContrast() {
+    const targetRatio = 4.5;
+    const background = state.palette.background;
+    const current = state.palette.text;
+    const currentRatio = contrastRatio(current, background);
+
+    if (currentRatio >= targetRatio) {
+      showToast("Contraste da cor de texto ja atende ao nivel AA.");
+      return;
+    }
+
+    const improvedText = findClosestAccessibleTextColor(current, background, targetRatio);
+    if (!improvedText) {
+      showToast("Nao foi possivel corrigir automaticamente mantendo coerencia de cor.");
+      return;
+    }
+
+    const updatedPalette = {
+      ...state.palette,
+      text: improvedText,
+      muted: normalizeHex(shiftLightness(improvedText, 22), state.palette.muted),
+    };
+
+    state.contrastLinkedToPalette = true;
+    applyPalette(updatedPalette);
+    showToast(`Contraste corrigido automaticamente para ${contrastRatio(improvedText, background).toFixed(2)}:1.`);
+  }
+
+  function findClosestAccessibleTextColor(baseColor, backgroundColor, targetRatio) {
+    const hsl = rgbToHsl(hexToRgb(baseColor));
+    const candidates = [];
+
+    for (let lightness = 0; lightness <= 100; lightness += 1) {
+      const candidate = hslToHex(hsl.h, hsl.s, lightness);
+      const ratio = contrastRatio(candidate, backgroundColor);
+      if (ratio >= targetRatio) {
+        candidates.push({
+          value: candidate,
+          distance: Math.abs(lightness - hsl.l),
+          ratio,
+        });
+      }
+    }
+
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    candidates.sort((left, right) => {
+      if (left.distance !== right.distance) {
+        return left.distance - right.distance;
+      }
+      return right.ratio - left.ratio;
+    });
+
+    return candidates[0].value;
   }
 
   function applyWcagResult(element, isPass) {
@@ -1990,6 +2132,15 @@
     }
   }
 
+  function hydrateVisionModeFromStorage() {
+    const storedVisionMode = safeStorageGet(STORAGE_KEYS.visionMode);
+    if (storedVisionMode && VISION_MODES.includes(storedVisionMode)) {
+      state.visionMode = storedVisionMode;
+    } else {
+      state.visionMode = "none";
+    }
+  }
+
   function hydrateStateFromQuery() {
     const params = new URLSearchParams(window.location.search);
     const encodedState = params.get("state");
@@ -2006,6 +2157,9 @@
       if (payload && THEME_MODES.includes(payload.themeMode)) {
         state.themeMode = payload.themeMode;
       }
+      if (payload && VISION_MODES.includes(payload.visionMode)) {
+        state.visionMode = payload.visionMode;
+      }
     } catch (error) {
       showToast("Não foi possível carregar a paleta compartilhada.");
     }
@@ -2015,6 +2169,7 @@
     const payload = {
       palette: state.palette,
       themeMode: state.themeMode,
+      visionMode: state.visionMode,
     };
     const encoded = toBase64Url(JSON.stringify(payload));
     const url = new URL(window.location.href);
@@ -2613,6 +2768,22 @@
       localStorage.setItem(key, value);
     } catch (error) {
       // Falha silenciosa em contextos sem permissão de storage.
+    }
+  }
+
+  function schedulePalettePersist() {
+    window.clearTimeout(palettePersistTimer);
+    palettePersistTimer = window.setTimeout(() => {
+      safeStorageSet(STORAGE_KEYS.palette, JSON.stringify(state.palette));
+      palettePersistTimer = null;
+    }, 120);
+  }
+
+  function flushPalettePersist() {
+    if (palettePersistTimer !== null) {
+      window.clearTimeout(palettePersistTimer);
+      palettePersistTimer = null;
+      safeStorageSet(STORAGE_KEYS.palette, JSON.stringify(state.palette));
     }
   }
 

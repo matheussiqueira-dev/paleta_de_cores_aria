@@ -23,6 +23,7 @@
       content="Crie, audite e exporte paletas de cores prontas para design system e producao."
     />
     <meta property="og:image" content="https://matheussiqueira-dev.github.io/paleta_de_cores_aria/docs/preview.png" />
+    <meta property="og:image:alt" content="Interface do studio Paleta de Cores ARIA" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Paleta de Cores ARIA | Studio" />
@@ -31,6 +32,7 @@
       content="Laboratorio fullstack para paletas com validacao WCAG, biblioteca e sincronizacao cloud."
     />
     <meta name="twitter:image" content="https://matheussiqueira-dev.github.io/paleta_de_cores_aria/docs/preview.png" />
+    <meta name="twitter:image:alt" content="Interface do studio Paleta de Cores ARIA" />
 
     <script type="application/ld+json">
       {
@@ -301,7 +303,7 @@
             <h2>Leitura rapida dos tokens</h2>
             <p>Confira contraste por token e copie valores individuais para uso imediato.</p>
           </div>
-          <div id="swatch-grid" class="swatch-grid"></div>
+          <div id="swatch-grid" class="swatch-grid vision-sensitive"></div>
         </section>
       </section>
 
@@ -410,6 +412,7 @@
                 <div class="actions">
                   <button id="swap-contrast" type="button" class="button button--ghost">Inverter</button>
                   <button id="use-palette-contrast" type="button" class="button button--ghost">Usar tokens</button>
+                  <button id="auto-fix-contrast" type="button" class="button button--ghost">Auto corrigir AA</button>
                 </div>
               </div>
 
@@ -433,7 +436,7 @@
                     <strong id="wcag-aaa-large" data-level="fail">Reprovado</strong>
                   </li>
                 </ul>
-                <p id="contrast-preview" class="contrast-preview">
+                <p id="contrast-preview" class="contrast-preview vision-sensitive">
                   Acessibilidade consistente reduz retrabalho e melhora experiencia para todos os usuarios.
                 </p>
               </div>
@@ -468,7 +471,19 @@
           <p>Teste os tokens em blocos de interface antes de aprovar a versao final para producao.</p>
         </div>
 
-        <div class="preview-grid">
+        <div class="vision-toolbar">
+          <label for="vision-mode-select">Simular visao:</label>
+          <select id="vision-mode-select">
+            <option value="none">Padrao</option>
+            <option value="protanopia">Protanopia</option>
+            <option value="deuteranopia">Deuteranopia</option>
+            <option value="tritanopia">Tritanopia</option>
+            <option value="achromatopsia">Acromatopsia</option>
+          </select>
+          <span id="vision-mode-status" class="vision-toolbar__status" aria-live="polite">Simulacao desativada.</span>
+        </div>
+
+        <div class="preview-grid vision-sensitive">
           <article class="demo-card">
             <p class="eyebrow">Card de oferta</p>
             <h3>Plano Professional</h3>
@@ -521,6 +536,47 @@
         <small>Studio fullstack para UX consistente, performance e acessibilidade.</small>
       </div>
     </footer>
+
+    <svg aria-hidden="true" width="0" height="0" class="vision-filters">
+      <defs>
+        <filter id="vision-protanopia">
+          <feColorMatrix
+            type="matrix"
+            values="0.567 0.433 0 0 0
+                    0.558 0.442 0 0 0
+                    0 0.242 0.758 0 0
+                    0 0 0 1 0"
+          />
+        </filter>
+        <filter id="vision-deuteranopia">
+          <feColorMatrix
+            type="matrix"
+            values="0.625 0.375 0 0 0
+                    0.7 0.3 0 0 0
+                    0 0.3 0.7 0 0
+                    0 0 0 1 0"
+          />
+        </filter>
+        <filter id="vision-tritanopia">
+          <feColorMatrix
+            type="matrix"
+            values="0.95 0.05 0 0 0
+                    0 0.433 0.567 0 0
+                    0 0.475 0.525 0 0
+                    0 0 0 1 0"
+          />
+        </filter>
+        <filter id="vision-achromatopsia">
+          <feColorMatrix
+            type="matrix"
+            values="0.299 0.587 0.114 0 0
+                    0.299 0.587 0.114 0 0
+                    0.299 0.587 0.114 0 0
+                    0 0 0 1 0"
+          />
+        </filter>
+      </defs>
+    </svg>
 
     <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
