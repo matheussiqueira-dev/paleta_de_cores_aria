@@ -10,6 +10,7 @@ const { buildPaletteAudit } = require("../../utils/paletteAudit");
 class PaletteService {
   constructor(dependencies) {
     this.paletteRepository = dependencies.paletteRepository;
+    this.idempotencyRepository = dependencies.idempotencyRepository || null;
     this.logger = dependencies.logger;
   }
 
@@ -44,18 +45,35 @@ class PaletteService {
     return palette;
   }
 
-  async createForUser(userId, payload) {
+  async createForUser(userId, payload, options = {}) {
+    const idempotencyKey = normalizeIdempotencyKey(options.idempotencyKey);
+    const scope = "palette.create";
+    const replayed = await this.#resolveIdempotentPalette(userId, idempotencyKey, scope);
+    if (replayed) {
+      this.logger.info({ userId, paletteId: replayed.id, idempotencyKey }, "Palette create replayed by idempotency key.");
+      return replayed;
+    }
+
     const normalized = normalizePalettePayload(payload);
     const created = await this.paletteRepository.create({
       ownerId: userId,
       ...normalized,
     });
+    await this.#rememberIdempotentPalette(userId, idempotencyKey, scope, created.id);
 
     this.logger.info({ userId, paletteId: created.id }, "Palette created.");
     return created;
   }
 
-  async importForUser(userId, payload) {
+  async importForUser(userId, payload, options = {}) {
+    const idempotencyKey = normalizeIdempotencyKey(options.idempotencyKey);
+    const scope = "palette.import";
+    const replayed = await this.#resolveIdempotentPalette(userId, idempotencyKey, scope);
+    if (replayed) {
+      this.logger.info({ userId, paletteId: replayed.id, idempotencyKey }, "Palette import replayed by idempotency key.");
+      return replayed;
+    }
+
     const candidate = payload.palette || payload.tokens || payload.colors || payload;
     const normalized = normalizePalettePayload({
       name: payload.name || "Paleta importada",
@@ -68,6 +86,7 @@ class PaletteService {
       ownerId: userId,
       ...normalized,
     });
+    await this.#rememberIdempotentPalette(userId, idempotencyKey, scope, created.id);
 
     this.logger.info({ userId, paletteId: created.id }, "Palette imported.");
     return created;
@@ -205,6 +224,38 @@ class PaletteService {
       recent,
     };
   }
+
+  async #resolveIdempotentPalette(userId, idempotencyKey, scope) {
+    if (!this.idempotencyRepository || !idempotencyKey) {
+      return null;
+    }
+
+    const record = await this.idempotencyRepository.findActiveRecord({
+      ownerId: userId,
+      key: idempotencyKey,
+      scope,
+      resourceType: "palette",
+    });
+    if (!record) {
+      return null;
+    }
+
+    return this.paletteRepository.findByIdForOwner(record.resourceId, userId);
+  }
+
+  async #rememberIdempotentPalette(userId, idempotencyKey, scope, paletteId) {
+    if (!this.idempotencyRepository || !idempotencyKey) {
+      return;
+    }
+
+    await this.idempotencyRepository.remember({
+      ownerId: userId,
+      key: idempotencyKey,
+      scope,
+      resourceType: "palette",
+      resourceId: paletteId,
+    });
+  }
 }
 
 function normalizePalettePayload(payload) {
@@ -276,6 +327,13 @@ function parseSortBy(value) {
 function parseSortDirection(value) {
   const normalized = String(value || "desc").trim().toLowerCase();
   return normalized === "asc" ? "asc" : "desc";
+}
+
+function normalizeIdempotencyKey(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value.trim();
 }
 
 module.exports = {

@@ -20,6 +20,9 @@ function errorHandler(logger) {
         method: req.method,
       }, "Unhandled error.");
     }
+    if (appError.code === "ACCOUNT_LOCKED" && Number.isFinite(appError?.details?.retryAfterSeconds)) {
+      res.setHeader("retry-after", String(appError.details.retryAfterSeconds));
+    }
 
     res.status(appError.statusCode).json({
       success: false,

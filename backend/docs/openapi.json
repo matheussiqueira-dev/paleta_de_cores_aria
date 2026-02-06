@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Paleta ARIA Backend API",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "API REST versionada para autenticação e gerenciamento de paletas de cores."
   },
   "servers": [
@@ -12,9 +12,15 @@
     }
   ],
   "tags": [
-    { "name": "Health" },
-    { "name": "Auth" },
-    { "name": "Palettes" }
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Palettes"
+    }
   ],
   "components": {
     "securitySchemes": {
@@ -28,71 +34,227 @@
       "ApiError": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean", "example": false },
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
           "error": {
             "type": "object",
             "properties": {
-              "code": { "type": "string", "example": "VALIDATION_ERROR" },
-              "message": { "type": "string" }
+              "code": {
+                "type": "string",
+                "example": "VALIDATION_ERROR"
+              },
+              "message": {
+                "type": "string"
+              }
             }
           },
-          "requestId": { "type": "string" },
-          "timestamp": { "type": "string", "format": "date-time" }
+          "requestId": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "UserProfile": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "format": "uuid" },
-          "email": { "type": "string", "format": "email" },
-          "name": { "type": "string" },
-          "role": { "type": "string", "enum": ["user", "admin"] },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "admin"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "AuthTokens": {
         "type": "object",
         "properties": {
-          "tokenType": { "type": "string", "example": "Bearer" },
-          "accessToken": { "type": "string" },
-          "refreshToken": { "type": "string" }
+          "tokenType": {
+            "type": "string",
+            "example": "Bearer"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
         }
       },
       "AuthPayload": {
         "type": "object",
         "properties": {
-          "user": { "$ref": "#/components/schemas/UserProfile" },
-          "tokens": { "$ref": "#/components/schemas/AuthTokens" }
+          "user": {
+            "$ref": "#/components/schemas/UserProfile"
+          },
+          "tokens": {
+            "$ref": "#/components/schemas/AuthTokens"
+          }
         }
       },
       "ColorTokens": {
         "type": "object",
-        "required": ["primary", "secondary", "accent", "background", "surface", "text", "muted", "border"],
+        "required": [
+          "primary",
+          "secondary",
+          "accent",
+          "background",
+          "surface",
+          "text",
+          "muted",
+          "border"
+        ],
         "properties": {
-          "primary": { "type": "string", "example": "#2F6FED" },
-          "secondary": { "type": "string", "example": "#13B89E" },
-          "accent": { "type": "string", "example": "#F26D3D" },
-          "background": { "type": "string", "example": "#F3F7FF" },
-          "surface": { "type": "string", "example": "#FFFFFF" },
-          "text": { "type": "string", "example": "#172033" },
-          "muted": { "type": "string", "example": "#5A657C" },
-          "border": { "type": "string", "example": "#D9E3F5" }
+          "primary": {
+            "type": "string",
+            "example": "#2F6FED"
+          },
+          "secondary": {
+            "type": "string",
+            "example": "#13B89E"
+          },
+          "accent": {
+            "type": "string",
+            "example": "#F26D3D"
+          },
+          "background": {
+            "type": "string",
+            "example": "#F3F7FF"
+          },
+          "surface": {
+            "type": "string",
+            "example": "#FFFFFF"
+          },
+          "text": {
+            "type": "string",
+            "example": "#172033"
+          },
+          "muted": {
+            "type": "string",
+            "example": "#5A657C"
+          },
+          "border": {
+            "type": "string",
+            "example": "#D9E3F5"
+          }
         }
       },
       "Palette": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "format": "uuid" },
-          "ownerId": { "type": "string", "format": "uuid" },
-          "name": { "type": "string" },
-          "description": { "type": "string" },
-          "tags": { "type": "array", "items": { "type": "string" } },
-          "tokens": { "$ref": "#/components/schemas/ColorTokens" },
-          "isPublic": { "type": "boolean" },
-          "shareId": { "type": ["string", "null"] },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tokens": {
+            "$ref": "#/components/schemas/ColorTokens"
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "shareId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PaletteAudit": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "example": 87.5
+          },
+          "grade": {
+            "type": "string",
+            "enum": [
+              "EXCELENTE",
+              "CONSISTENTE",
+              "ATENCAO",
+              "CRITICO"
+            ]
+          },
+          "totalChecks": {
+            "type": "integer",
+            "example": 7
+          },
+          "failingChecks": {
+            "type": "integer",
+            "example": 1
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "threshold": {
+                  "type": "number"
+                },
+                "ratio": {
+                  "type": "number"
+                },
+                "passed": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -100,54 +262,82 @@
   "paths": {
     "/api/v1/health/live": {
       "get": {
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "summary": "Liveness probe",
         "responses": {
-          "200": { "description": "Serviço ativo" }
+          "200": {
+            "description": "Serviço ativo"
+          }
         }
       }
     },
     "/api/v1/health/ready": {
       "get": {
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "summary": "Readiness probe",
         "responses": {
-          "200": { "description": "Serviço pronto" }
+          "200": {
+            "description": "Serviço pronto"
+          }
         }
       }
     },
     "/api/v1/health/info": {
       "get": {
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "summary": "Informações da aplicação",
         "responses": {
-          "200": { "description": "Informações retornadas" }
+          "200": {
+            "description": "Informações retornadas"
+          }
         }
       }
     },
     "/api/v1/health/metrics": {
       "get": {
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "summary": "Métricas operacionais",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "responses": {
-          "200": { "description": "Métricas retornadas" },
-          "403": { "description": "Acesso restrito a administradores" }
+          "200": {
+            "description": "Métricas retornadas"
+          },
+          "403": {
+            "description": "Acesso restrito a administradores"
+          }
         }
       }
     },
     "/api/v1/docs/openapi.json": {
       "get": {
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "summary": "Contrato OpenAPI",
         "responses": {
-          "200": { "description": "Contrato retornado" }
+          "200": {
+            "description": "Contrato retornado"
+          }
         }
       }
     },
     "/api/v1/auth/register": {
       "post": {
-        "tags": ["Auth"],
+        "tags": [
+          "Auth"
+        ],
         "summary": "Registrar usuário",
         "requestBody": {
           "required": true,
@@ -155,192 +345,539 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["name", "email", "password"],
+                "required": [
+                  "name",
+                  "email",
+                  "password"
+                ],
                 "properties": {
-                  "name": { "type": "string" },
-                  "email": { "type": "string", "format": "email" },
-                  "password": { "type": "string", "format": "password" }
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "201": { "description": "Usuário registrado" },
-          "409": { "description": "Email já existe" }
+          "201": {
+            "description": "Usuário registrado"
+          },
+          "409": {
+            "description": "Email já existe"
+          }
         }
       }
     },
     "/api/v1/auth/login": {
       "post": {
-        "tags": ["Auth"],
+        "tags": [
+          "Auth"
+        ],
         "summary": "Login de usuário",
         "responses": {
-          "200": { "description": "Autenticado" },
-          "401": { "description": "Credenciais inválidas" },
-          "429": { "description": "Limite de tentativas de login" }
+          "200": {
+            "description": "Autenticado"
+          },
+          "401": {
+            "description": "Credenciais inválidas"
+          },
+          "423": {
+            "description": "Conta temporariamente bloqueada por tentativas inválidas"
+          },
+          "429": {
+            "description": "Limite de tentativas de login"
+          }
         }
       }
     },
     "/api/v1/auth/refresh": {
       "post": {
-        "tags": ["Auth"],
+        "tags": [
+          "Auth"
+        ],
         "summary": "Rotacionar access/refresh tokens",
         "responses": {
-          "200": { "description": "Tokens renovados" },
-          "401": { "description": "Refresh token inválido ou revogado" }
+          "200": {
+            "description": "Tokens renovados"
+          },
+          "401": {
+            "description": "Refresh token inválido ou revogado"
+          }
         }
       }
     },
     "/api/v1/auth/logout": {
       "post": {
-        "tags": ["Auth"],
+        "tags": [
+          "Auth"
+        ],
         "summary": "Encerrar sessão atual",
         "responses": {
-          "200": { "description": "Logout realizado" }
+          "200": {
+            "description": "Logout realizado"
+          }
         }
       }
     },
     "/api/v1/auth/logout-all": {
       "post": {
-        "tags": ["Auth"],
+        "tags": [
+          "Auth"
+        ],
         "summary": "Revogar todas as sessões",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "responses": {
-          "200": { "description": "Sessões revogadas" }
+          "200": {
+            "description": "Sessões revogadas"
+          }
         }
       }
     },
     "/api/v1/auth/me": {
       "get": {
-        "tags": ["Auth"],
+        "tags": [
+          "Auth"
+        ],
         "summary": "Perfil do usuário autenticado",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "responses": {
-          "200": { "description": "Perfil retornado" },
-          "401": { "description": "Não autenticado" }
+          "200": {
+            "description": "Perfil retornado"
+          },
+          "401": {
+            "description": "Não autenticado"
+          }
         }
       }
     },
     "/api/v1/auth/change-password": {
       "post": {
-        "tags": ["Auth"],
+        "tags": [
+          "Auth"
+        ],
         "summary": "Alterar senha e revogar sessões anteriores",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["currentPassword", "newPassword"],
+                "required": [
+                  "currentPassword",
+                  "newPassword"
+                ],
                 "properties": {
-                  "currentPassword": { "type": "string", "format": "password" },
-                  "newPassword": { "type": "string", "format": "password" }
+                  "currentPassword": {
+                    "type": "string",
+                    "format": "password"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "format": "password"
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Senha atualizada" },
-          "401": { "description": "Senha atual inválida" }
+          "200": {
+            "description": "Senha atualizada"
+          },
+          "401": {
+            "description": "Senha atual inválida"
+          }
         }
       }
     },
     "/api/v1/palettes": {
       "get": {
-        "tags": ["Palettes"],
+        "tags": [
+          "Palettes"
+        ],
         "summary": "Listar paletas do usuário",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "responses": {
-          "200": { "description": "Lista retornada" },
-          "401": { "description": "Não autenticado" }
+          "200": {
+            "description": "Lista retornada"
+          },
+          "401": {
+            "description": "Não autenticado"
+          }
         }
       },
       "post": {
-        "tags": ["Palettes"],
+        "tags": [
+          "Palettes"
+        ],
         "summary": "Criar nova paleta",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "responses": {
-          "201": { "description": "Paleta criada" }
-        }
+          "201": {
+            "description": "Paleta criada"
+          },
+          "400": {
+            "description": "Header Idempotency-Key inválido"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "description": "Chave opcional para tornar create idempotente em cenarios de retry."
+          }
+        ]
       }
     },
     "/api/v1/palettes/import": {
       "post": {
-        "tags": ["Palettes"],
+        "tags": [
+          "Palettes"
+        ],
         "summary": "Importar paleta",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "responses": {
-          "201": { "description": "Paleta importada" }
-        }
+          "201": {
+            "description": "Paleta importada"
+          },
+          "400": {
+            "description": "Header Idempotency-Key inválido"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "description": "Chave opcional para tornar import idempotente em cenarios de retry."
+          }
+        ]
       }
     },
     "/api/v1/palettes/analytics/summary": {
       "get": {
-        "tags": ["Palettes"],
+        "tags": [
+          "Palettes"
+        ],
         "summary": "Resumo analítico das paletas do usuário",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "responses": {
-          "200": { "description": "Resumo retornado" }
+          "200": {
+            "description": "Resumo retornado"
+          }
         }
       }
     },
     "/api/v1/palettes/{paletteId}": {
       "get": {
-        "tags": ["Palettes"],
+        "tags": [
+          "Palettes"
+        ],
         "summary": "Obter paleta por ID",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{ "name": "paletteId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
-        "responses": { "200": { "description": "Paleta encontrada" }, "404": { "description": "Paleta não encontrada" } }
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "paletteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "if-none-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ETag condicional para retornar 304 quando não houve alteração."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paleta encontrada",
+            "headers": {
+              "etag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Sem alterações"
+          },
+          "404": {
+            "description": "Paleta não encontrada"
+          }
+        }
       },
       "patch": {
-        "tags": ["Palettes"],
+        "tags": [
+          "Palettes"
+        ],
         "summary": "Atualizar paleta",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{ "name": "paletteId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
-        "responses": { "200": { "description": "Paleta atualizada" } }
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "paletteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "if-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ETag opcional para controle de concorrência otimista."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paleta atualizada"
+          },
+          "412": {
+            "description": "Pré-condição falhou (recurso desatualizado)"
+          }
+        }
       },
       "delete": {
-        "tags": ["Palettes"],
+        "tags": [
+          "Palettes"
+        ],
         "summary": "Excluir paleta",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{ "name": "paletteId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
-        "responses": { "200": { "description": "Paleta removida" } }
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "paletteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "if-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ETag opcional para controle de concorrência otimista."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paleta removida"
+          },
+          "412": {
+            "description": "Pré-condição falhou (recurso desatualizado)"
+          }
+        }
       }
     },
     "/api/v1/palettes/{paletteId}/share": {
       "post": {
-        "tags": ["Palettes"],
+        "tags": [
+          "Palettes"
+        ],
         "summary": "Publicar paleta e gerar shareId",
-        "security": [{ "bearerAuth": [] }],
-        "responses": { "200": { "description": "Paleta compartilhada" } }
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paleta compartilhada"
+          }
+        }
       }
     },
     "/api/v1/palettes/{paletteId}/unshare": {
       "post": {
-        "tags": ["Palettes"],
+        "tags": [
+          "Palettes"
+        ],
         "summary": "Remover compartilhamento público",
-        "security": [{ "bearerAuth": [] }],
-        "responses": { "200": { "description": "Compartilhamento removido" } }
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Compartilhamento removido"
+          }
+        }
       }
     },
     "/api/v1/palettes/public/{shareId}": {
       "get": {
-        "tags": ["Palettes"],
+        "tags": [
+          "Palettes"
+        ],
         "summary": "Obter paleta pública por shareId",
-        "parameters": [{ "name": "shareId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          {
+            "name": "shareId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Paleta pública encontrada",
             "headers": {
-              "etag": { "schema": { "type": "string" } },
-              "cache-control": { "schema": { "type": "string" } }
+              "etag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "cache-control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
             }
           },
-          "304": { "description": "Sem alterações" },
-          "404": { "description": "Não encontrada" }
+          "304": {
+            "description": "Sem alterações"
+          },
+          "404": {
+            "description": "Não encontrada"
+          }
+        }
+      }
+    },
+    "/api/v1/palettes/{paletteId}/audit": {
+      "get": {
+        "tags": [
+          "Palettes"
+        ],
+        "summary": "Auditoria de acessibilidade da paleta privada",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "paletteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Auditoria retornada"
+          },
+          "404": {
+            "description": "Paleta não encontrada"
+          }
+        }
+      }
+    },
+    "/api/v1/palettes/public/{shareId}/audit": {
+      "get": {
+        "tags": [
+          "Palettes"
+        ],
+        "summary": "Auditoria de acessibilidade da paleta pública",
+        "parameters": [
+          {
+            "name": "shareId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Auditoria retornada"
+          },
+          "404": {
+            "description": "Paleta pública não encontrada"
+          }
         }
       }
     }

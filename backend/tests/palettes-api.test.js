@@ -196,3 +196,161 @@ test("palette list: filtros por visibilidade/tags e ordenação", async () => {
     await context.cleanup();
   }
 });
+
+test("palette security: controle otimista com ETag e If-Match", async () => {
+  const context = await createTestContext();
+  const api = request(context.app);
+
+  try {
+    const register = await api.post("/api/v1/auth/register").send({
+      name: "Concurrency Owner",
+      email: "concurrency.owner@example.com",
+      password: "SenhaForte123",
+    });
+    const accessToken = register.body.data.tokens.accessToken;
+
+    const createResponse = await api
+      .post("/api/v1/palettes")
+      .set("authorization", `Bearer ${accessToken}`)
+      .send({
+        name: "Palette OCC",
+        description: "Controle de concorrencia",
+        tags: ["occ"],
+        tokens: buildTokens(),
+      });
+    assert.equal(createResponse.status, 201);
+
+    const paletteId = createResponse.body.data.id;
+
+    const getResponse = await api.get(`/api/v1/palettes/${paletteId}`).set("authorization", `Bearer ${accessToken}`);
+    assert.equal(getResponse.status, 200);
+    assert.ok(getResponse.headers.etag);
+    const firstEtag = getResponse.headers.etag;
+
+    const staleUpdate = await api
+      .patch(`/api/v1/palettes/${paletteId}`)
+      .set("authorization", `Bearer ${accessToken}`)
+      .set("if-match", "\"stale-tag\"")
+      .send({
+        description: "Atualizacao com tag antiga",
+      });
+    assert.equal(staleUpdate.status, 412);
+    assert.equal(staleUpdate.body.error.code, "PRECONDITION_FAILED");
+
+    const validUpdate = await api
+      .patch(`/api/v1/palettes/${paletteId}`)
+      .set("authorization", `Bearer ${accessToken}`)
+      .set("if-match", firstEtag)
+      .send({
+        description: "Atualizacao com tag correta",
+      });
+    assert.equal(validUpdate.status, 200);
+    assert.ok(validUpdate.headers.etag);
+    assert.notEqual(validUpdate.headers.etag, firstEtag);
+    const secondEtag = validUpdate.headers.etag;
+
+    const conditionalGet = await api
+      .get(`/api/v1/palettes/${paletteId}`)
+      .set("authorization", `Bearer ${accessToken}`)
+      .set("if-none-match", secondEtag);
+    assert.equal(conditionalGet.status, 304);
+
+    const staleDelete = await api
+      .delete(`/api/v1/palettes/${paletteId}`)
+      .set("authorization", `Bearer ${accessToken}`)
+      .set("if-match", firstEtag);
+    assert.equal(staleDelete.status, 412);
+    assert.equal(staleDelete.body.error.code, "PRECONDITION_FAILED");
+
+    const validDelete = await api
+      .delete(`/api/v1/palettes/${paletteId}`)
+      .set("authorization", `Bearer ${accessToken}`)
+      .set("if-match", secondEtag);
+    assert.equal(validDelete.status, 200);
+  } finally {
+    await context.cleanup();
+  }
+});
+
+test("palette reliability: idempotency-key evita duplicacao de criacao/importacao", async () => {
+  const context = await createTestContext();
+  const api = request(context.app);
+
+  try {
+    const register = await api.post("/api/v1/auth/register").send({
+      name: "Idempotency Owner",
+      email: "idempotency.owner@example.com",
+      password: "SenhaForte123",
+    });
+    const accessToken = register.body.data.tokens.accessToken;
+
+    const firstCreate = await api
+      .post("/api/v1/palettes")
+      .set("authorization", `Bearer ${accessToken}`)
+      .set("idempotency-key", "palette-create-0001")
+      .send({
+        name: "Core Palette",
+        description: "Primeira tentativa",
+        tags: ["core"],
+        tokens: buildTokens(),
+      });
+    assert.equal(firstCreate.status, 201);
+
+    const replayCreate = await api
+      .post("/api/v1/palettes")
+      .set("authorization", `Bearer ${accessToken}`)
+      .set("idempotency-key", "palette-create-0001")
+      .send({
+        name: "Core Palette v2",
+        description: "Tentativa repetida",
+        tags: ["core", "dup"],
+        tokens: {
+          ...buildTokens(),
+          primary: "#8B33E8",
+        },
+      });
+    assert.equal(replayCreate.status, 201);
+    assert.equal(replayCreate.body.data.id, firstCreate.body.data.id);
+
+    const firstImport = await api
+      .post("/api/v1/palettes/import")
+      .set("authorization", `Bearer ${accessToken}`)
+      .set("idempotency-key", "palette-import-0001")
+      .send({
+        name: "Imported Palette",
+        palette: buildTokens(),
+      });
+    assert.equal(firstImport.status, 201);
+
+    const replayImport = await api
+      .post("/api/v1/palettes/import")
+      .set("authorization", `Bearer ${accessToken}`)
+      .set("idempotency-key", "palette-import-0001")
+      .send({
+        name: "Imported Palette replay",
+        palette: {
+          ...buildTokens(),
+          accent: "#A55C22",
+        },
+      });
+    assert.equal(replayImport.status, 201);
+    assert.equal(replayImport.body.data.id, firstImport.body.data.id);
+
+    const listResponse = await api.get("/api/v1/palettes").set("authorization", `Bearer ${accessToken}`);
+    assert.equal(listResponse.status, 200);
+    assert.equal(listResponse.body.data.total, 2);
+
+    const invalidIdempotency = await api
+      .post("/api/v1/palettes")
+      .set("authorization", `Bearer ${accessToken}`)
+      .set("idempotency-key", "x")
+      .send({
+        name: "Invalid key",
+        tokens: buildTokens(),
+      });
+    assert.equal(invalidIdempotency.status, 400);
+    assert.equal(invalidIdempotency.body.error.code, "INVALID_IDEMPOTENCY_KEY");
+  } finally {
+    await context.cleanup();
+  }
+});

@@ -171,3 +171,46 @@ test("auth route: login rate limit específico", async () => {
     await context.cleanup();
   }
 });
+
+test("auth security: lockout progressivo após falhas consecutivas", async () => {
+  const context = await createTestContext({
+    env: {
+      AUTH_MAX_FAILED_ATTEMPTS: "2",
+      AUTH_LOCKOUT_WINDOW_MS: "120000",
+    },
+  });
+  const api = request(context.app);
+
+  try {
+    const registerResponse = await api.post("/api/v1/auth/register").send({
+      name: "Lockout User",
+      email: "lockout.user@example.com",
+      password: "SenhaForte123",
+    });
+    assert.equal(registerResponse.status, 201);
+
+    const firstInvalid = await api.post("/api/v1/auth/login").send({
+      email: "lockout.user@example.com",
+      password: "invalida",
+    });
+    assert.equal(firstInvalid.status, 401);
+    assert.equal(firstInvalid.body.error.code, "INVALID_CREDENTIALS");
+
+    const secondInvalid = await api.post("/api/v1/auth/login").send({
+      email: "lockout.user@example.com",
+      password: "invalida",
+    });
+    assert.equal(secondInvalid.status, 423);
+    assert.equal(secondInvalid.body.error.code, "ACCOUNT_LOCKED");
+    assert.ok(Number.parseInt(String(secondInvalid.headers["retry-after"] || "0"), 10) > 0);
+
+    const validWhileLocked = await api.post("/api/v1/auth/login").send({
+      email: "lockout.user@example.com",
+      password: "SenhaForte123",
+    });
+    assert.equal(validWhileLocked.status, 423);
+    assert.equal(validWhileLocked.body.error.code, "ACCOUNT_LOCKED");
+  } finally {
+    await context.cleanup();
+  }
+});

@@ -15,25 +15,25 @@ const registerBodySchema = z.object({
   name: z.string().trim().min(2).max(80),
   email: emailSchema,
   password: passwordSchema,
-});
+}).strict();
 
 const loginBodySchema = z.object({
   email: emailSchema,
   password: z.string().min(1).max(120),
-});
+}).strict();
 
 const refreshBodySchema = z.object({
   refreshToken: z.string().min(10),
-});
+}).strict();
 
 const logoutBodySchema = z.object({
   refreshToken: z.string().min(10).optional(),
-});
+}).strict();
 
 const changePasswordBodySchema = z.object({
   currentPassword: z.string().min(1).max(120),
   newPassword: passwordSchema,
-});
+}).strict();
 
 module.exports = {
   registerBodySchema,

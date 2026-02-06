@@ -12,6 +12,7 @@ const { createLogger } = require("./config/logger");
 const { FileDatabase } = require("./infrastructure/persistence/fileDatabase");
 const { UserRepository } = require("./infrastructure/repositories/userRepository");
 const { PaletteRepository } = require("./infrastructure/repositories/paletteRepository");
+const { IdempotencyRepository } = require("./infrastructure/repositories/idempotencyRepository");
 const { PasswordHasher } = require("./infrastructure/security/passwordHasher");
 const { TokenService } = require("./infrastructure/security/tokenService");
 const { AuthService } = require("./application/services/authService");
@@ -47,6 +48,9 @@ async function createBackendApp(overrides = {}) {
 
   const userRepository = new UserRepository(database);
   const paletteRepository = new PaletteRepository(database);
+  const idempotencyRepository = new IdempotencyRepository(database, {
+    ttlMs: env.IDEMPOTENCY_TTL_MS,
+  });
 
   const passwordHasher = new PasswordHasher(env.BCRYPT_ROUNDS);
   const tokenService = new TokenService(env);
@@ -57,10 +61,13 @@ async function createBackendApp(overrides = {}) {
     tokenService,
     logger,
     bootstrapAdminEmail: env.ADMIN_BOOTSTRAP_EMAIL,
+    maxFailedAttempts: env.AUTH_MAX_FAILED_ATTEMPTS,
+    lockoutWindowMs: env.AUTH_LOCKOUT_WINDOW_MS,
   });
 
   const paletteService = new PaletteService({
     paletteRepository,
+    idempotencyRepository,
     logger,
   });
 
@@ -80,7 +87,8 @@ async function createBackendApp(overrides = {}) {
     cors({
       origin: parseCorsOrigins(env.CORS_ORIGIN),
       methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-      allowedHeaders: ["content-type", "authorization", "x-request-id"],
+      allowedHeaders: ["content-type", "authorization", "x-request-id", "idempotency-key", "if-match", "if-none-match"],
+      exposedHeaders: ["etag", "x-request-id"],
       maxAge: 600,
     })
   );

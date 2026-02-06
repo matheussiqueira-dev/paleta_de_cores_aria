@@ -3,6 +3,7 @@
 const express = require("express");
 const { asyncHandler } = require("../../../utils/asyncHandler");
 const { validate } = require("../middlewares/validate");
+const { idempotencyKeyMiddleware } = require("../middlewares/idempotencyKey");
 const {
   createPaletteBodySchema,
   importPaletteBodySchema,
@@ -28,8 +29,8 @@ function buildPaletteRoutes(dependencies) {
   router.get("/", validate(listQuerySchema, "query"), asyncHandler(paletteController.list));
   router.get("/analytics/summary", asyncHandler(paletteController.analytics));
   router.get("/:paletteId/audit", validate(paletteParamsSchema, "params"), asyncHandler(paletteController.audit));
-  router.post("/", validate(createPaletteBodySchema), asyncHandler(paletteController.create));
-  router.post("/import", validate(importPaletteBodySchema), asyncHandler(paletteController.import));
+  router.post("/", idempotencyKeyMiddleware, validate(createPaletteBodySchema), asyncHandler(paletteController.create));
+  router.post("/import", idempotencyKeyMiddleware, validate(importPaletteBodySchema), asyncHandler(paletteController.import));
   router.get("/:paletteId", validate(paletteParamsSchema, "params"), asyncHandler(paletteController.getById));
   router.patch(
     "/:paletteId",

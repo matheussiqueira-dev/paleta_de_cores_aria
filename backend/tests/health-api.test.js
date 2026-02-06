@@ -40,8 +40,10 @@ test("health: métricas protegidas por role admin", async () => {
     assert.equal(withAdminRole.status, 200);
     assert.equal(withAdminRole.body.success, true);
     assert.ok(typeof withAdminRole.body.data.httpRequests === "number");
+    assert.ok(typeof withAdminRole.body.data.latency?.averageMs === "number");
+    assert.ok(typeof withAdminRole.body.data.latency?.p95Ms === "number");
+    assert.ok(typeof withAdminRole.body.data.statusBuckets?.["2xx"] === "number");
   } finally {
     await context.cleanup();
   }
 });
-

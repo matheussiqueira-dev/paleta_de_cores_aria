@@ -11,6 +11,7 @@ const DEFAULT_STATE = Object.freeze({
   },
   users: [],
   palettes: [],
+  idempotencyRecords: [],
 });
 
 class FileDatabase {
@@ -97,6 +98,9 @@ class FileDatabase {
     }
     if (Array.isArray(candidate.palettes)) {
       base.palettes = candidate.palettes;
+    }
+    if (Array.isArray(candidate.idempotencyRecords)) {
+      base.idempotencyRecords = candidate.idempotencyRecords;
     }
 
     const schemaVersion = Number.parseInt(candidate?.metadata?.schemaVersion, 10);

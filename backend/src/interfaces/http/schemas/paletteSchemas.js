@@ -19,14 +19,14 @@ const tokensSchema = z.object({
   text: colorTokenSchema,
   muted: colorTokenSchema,
   border: colorTokenSchema,
-});
+}).strict();
 
 const createPaletteBodySchema = z.object({
   name: z.string().trim().min(2).max(120),
   description: z.string().trim().max(360).optional().default(""),
   tags: z.array(z.string().trim().min(1).max(36)).max(10).optional().default([]),
   tokens: tokensSchema,
-});
+}).strict();
 
 const importPaletteBodySchema = z.object({
   name: z.string().trim().max(120).optional(),
@@ -35,7 +35,7 @@ const importPaletteBodySchema = z.object({
   palette: tokensSchema.optional(),
   tokens: tokensSchema.optional(),
   colors: tokensSchema.optional(),
-});
+}).strict();
 
 const updatePaletteBodySchema = z
   .object({
@@ -44,6 +44,7 @@ const updatePaletteBodySchema = z
     tags: z.array(z.string().trim().min(1).max(36)).max(10).optional(),
     tokens: tokensSchema.optional(),
   })
+  .strict()
   .refine((value) => Object.keys(value).length > 0, {
     message: "Informe ao menos um campo para atualização.",
   });

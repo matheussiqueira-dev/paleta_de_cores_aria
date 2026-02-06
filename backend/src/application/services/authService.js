@@ -13,6 +13,8 @@ class AuthService {
     this.bootstrapAdminEmail = String(dependencies.bootstrapAdminEmail || "")
       .trim()
       .toLowerCase();
+    this.maxFailedAttempts = normalizePositiveInteger(dependencies.maxFailedAttempts, 6);
+    this.lockoutWindowMs = normalizePositiveInteger(dependencies.lockoutWindowMs, 15 * 60 * 1000);
   }
 
   async register(payload) {
@@ -50,15 +52,23 @@ class AuthService {
         code: "INVALID_CREDENTIALS",
       });
     }
+    this.#assertUserIsNotLocked(user);
 
     const isPasswordValid = await this.passwordHasher.verify(payload.password, user.passwordHash);
     if (!isPasswordValid) {
+      const updatedUser = await this.userRepository.registerFailedLoginAttempt(user.id, {
+        maxAttempts: this.maxFailedAttempts,
+        lockoutWindowMs: this.lockoutWindowMs,
+      });
+      this.#assertUserIsNotLocked(updatedUser || user);
+
       throw new AppError("Credenciais inválidas.", {
         statusCode: 401,
         code: "INVALID_CREDENTIALS",
       });
     }
 
+    await this.userRepository.clearLoginSecurityState(user.id);
     this.logger.info({ userId: user.id }, "User logged in.");
     return this.#issueTokens(user);
   }
@@ -212,6 +222,32 @@ class AuthService {
       updatedAt: user.updatedAt,
     };
   }
+
+  #assertUserIsNotLocked(user) {
+    const lockedUntil = user?.loginSecurity?.lockedUntil;
+    const lockedUntilMs = Date.parse(String(lockedUntil || ""));
+    const now = Date.now();
+    if (!Number.isFinite(lockedUntilMs) || lockedUntilMs <= now) {
+      return;
+    }
+
+    const retryAfterSeconds = Math.max(1, Math.ceil((lockedUntilMs - now) / 1000));
+    throw new AppError("Conta temporariamente bloqueada por tentativas inválidas.", {
+      statusCode: 423,
+      code: "ACCOUNT_LOCKED",
+      details: {
+        retryAfterSeconds,
+      },
+    });
+  }
+}
+
+function normalizePositiveInteger(value, fallback) {
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
 }
 
 module.exports = {

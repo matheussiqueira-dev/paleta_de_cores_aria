@@ -1,121 +1,182 @@
-# Paleta de Cores ARIA - Frontend
+# Paleta de Cores ARIA - Backend
 
-![Preview da interface](docs/preview.png)
+## Visao geral do backend
+O backend do **Paleta de Cores ARIA** fornece uma API REST versionada para autenticacao, gestao de paletas, compartilhamento publico e auditoria de acessibilidade.
 
-## Visao geral do frontend
-O frontend do **Paleta de Cores ARIA** e uma aplicacao web focada em criacao, validacao e distribuicao de paletas com usabilidade profissional.
+Objetivos de negocio:
+- Permitir operacao segura de paletas por usuario.
+- Garantir consistencia de dados entre sessao local e nuvem.
+- Oferecer contrato estavel para integracao com frontend e automacoes.
 
-Objetivo principal:
-- Permitir que designers e devs tomem decisoes de cor com base em contraste real, consistencia visual e handoff tecnico.
+Principais capacidades:
+- Autenticacao JWT (access + refresh) com rotacao.
+- CRUD de paletas com filtros, ordenacao e analytics.
+- Compartilhamento publico por `shareId` com cache condicional.
+- Auditoria de contraste da paleta (privada e publica).
+- Controles de confiabilidade para retries e concorrencia otimista.
 
-Publico-alvo:
-- Designers de produto e UI.
-- Desenvolvedores frontend que trabalham com design tokens.
-- Times de produto que precisam reduzir retrabalho de interface.
+## Arquitetura adotada
+Arquitetura modular em camadas, inspirada em Clean Architecture:
 
-## Fluxos principais
-1. Montar ou gerar paleta no laboratorio.
-2. Validar contraste no checker WCAG e na auditoria inteligente.
-3. Salvar variacoes na biblioteca local (incluindo favoritos).
-4. Exportar tokens ou sincronizar com API backend.
+- `domain`: constantes e erros de dominio.
+- `application`: servicos de negocio (`AuthService`, `PaletteService`, `MetricsService`).
+- `infrastructure`: persistencia, repositorios e seguranca (hash/JWT).
+- `interfaces/http`: controllers, middlewares, schemas e rotas.
 
-## Analise tecnica do frontend
-### Arquitetura atual
-- Frontend estatico em `index.html + assets/css/styles.css + assets/js/app.js`.
-- Estado centralizado no `app.js` com persistencia em `localStorage`.
-- UI organizada por secoes funcionais (laboratorio, biblioteca, nuvem, acessibilidade, componentes, tokens).
+Tipo de sistema:
+- Monolito modular (Node.js + Express), preparado para evolucao por fronteiras de contexto.
 
-### Pontos criticos tratados
-- Reducao de custo de atualizacao de UI durante edicao de paleta.
-- Persistencia otimizada de estado para evitar excesso de escrita no `localStorage`.
-- Evolucao da acessibilidade com labels, estados ARIA e suporte a teclado.
-- Hierarquia visual revisada para priorizar leitura de fluxo e tomada de decisao.
+## Tecnologias utilizadas
+- Node.js 20+
+- Express 4
+- Zod (validacao)
+- JWT (`jsonwebtoken`)
+- Hash de senha (`bcryptjs`)
+- Seguranca HTTP: `helmet`, `hpp`, `cors`, `express-rate-limit`
+- Logs estruturados: `pino`
+- Testes: `node:test` + `supertest`
 
-## Otimizacoes e refactor aplicados
-- Refactor de UI/UX completo com nova linguagem visual e melhor responsividade.
-- Mapeamento de inputs de token cacheado para reduzir trabalho repetido em sincronizacao.
-- Persistencia de paleta com debounce para minimizar operacoes intensivas durante drag em color inputs.
-- SEO melhorado com metadados adicionais (`og:image:alt`, `twitter:image:alt`).
+## Recursos de seguranca e confiabilidade
+### Autenticacao e autorizacao
+- Access token curto + refresh token com rotacao.
+- Deteccao de reuse de refresh token com revogacao de sessoes.
+- Controle de role (`user`/`admin`) para endpoints sensiveis.
 
-## Novas features implementadas
-### 1. Auto correcao de contraste AA
-- Acao: `Auto corrigir AA` no checker de contraste.
-- Beneficio: ajusta automaticamente a cor de texto para atingir nivel AA quando possivel.
-- Valor: acelera correcoes de acessibilidade sem tentativa manual iterativa.
+### Protecoes de API
+- Validacao de payload e query com Zod.
+- Rate limit global e rate limit especifico para login.
+- Lockout progressivo para tentativas invalidas de login.
+- Sanitizacao basica de entradas textuais.
 
-### 2. Simulador de visao (acessibilidade avancada)
-- Modos: padrao, protanopia, deuteranopia, tritanopia, acromatopsia.
-- Aplicado em previews visuais para testar robustez da paleta em cenarios reais.
-- Valor: melhora inclusao e qualidade de decisao para interfaces criticas.
+### Confiabilidade operacional
+- Escrita atomica do arquivo de dados.
+- Idempotencia por `Idempotency-Key` em create/import de paletas.
+- Concorrencia otimista com `ETag` + `If-Match` em update/delete.
+- Cache condicional com `If-None-Match` em endpoints de leitura.
+- `requestId` por requisicao e respostas de erro padronizadas.
 
-### 3. Biblioteca local com favoritos (curadoria)
-- Fluxo: marcar/desmarcar favoritas e filtrar `Todas`/`Favoritas`.
-- Valor: melhora navegacao e produtividade em projetos com muitas variacoes.
+## Endpoints principais
+Base local: `http://localhost:3333`
 
-### 4. Auditoria inteligente da paleta
-- Score, grade e checks de contraste em tempo real.
-- Exportacao de relatorio JSON para documentacao tecnica.
-- Valor: padroniza criterio de qualidade para design system.
+### Health
+- `GET /api/v1/health/live`
+- `GET /api/v1/health/ready`
+- `GET /api/v1/health/info`
+- `GET /api/v1/health/metrics` (admin)
+- `GET /api/v1/docs/openapi.json`
 
-## Stack e tecnologias
-- HTML5 sem framework
-- CSS3 (tokens visuais, layout responsivo, motion control)
-- JavaScript ES2020+ (estado, rendering e integracao)
-- API integration via `fetch`
-- Teste de sintaxe frontend via `node --check`
+### Auth
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/logout-all`
+- `GET /api/v1/auth/me`
+- `POST /api/v1/auth/change-password`
 
-## Estrutura do frontend
-```text
-.
-├─ index.html
-├─ assets/
-│  ├─ css/
-│  │  └─ styles.css
-│  └─ js/
-│     └─ app.js
-├─ docs/
-│  └─ preview.png
-└─ package.json
-```
+### Palettes
+- `GET /api/v1/palettes`
+- `POST /api/v1/palettes`
+- `POST /api/v1/palettes/import`
+- `GET /api/v1/palettes/:paletteId`
+- `PATCH /api/v1/palettes/:paletteId`
+- `DELETE /api/v1/palettes/:paletteId`
+- `GET /api/v1/palettes/:paletteId/audit`
+- `POST /api/v1/palettes/:paletteId/share`
+- `POST /api/v1/palettes/:paletteId/unshare`
+- `GET /api/v1/palettes/analytics/summary`
+- `GET /api/v1/palettes/public/:shareId`
+- `GET /api/v1/palettes/public/:shareId/audit`
 
 ## Setup e execucao
 ### Pre-requisitos
 - Node.js 20+
 - npm 10+
 
-### Instalar dependencias
+### Instalacao
 ```bash
-npm install
+npm --prefix backend install
 ```
 
-### Rodar frontend local
+### Desenvolvimento
 ```bash
-npm run preview
-```
-A aplicacao fica disponivel em `http://localhost:4173`.
-
-### Build
-- O frontend e estatico e nao exige etapa de build obrigatoria.
-- Deploy recomendado: GitHub Pages, Vercel ou Netlify.
-
-### Validacao
-```bash
-npm run test:frontend
+npm --prefix backend run dev
 ```
 
-## Boas praticas adotadas
-- Estado centralizado e previsivel.
-- Tokens de design aplicados via CSS variables.
-- Interface orientada a acessibilidade (ARIA, foco visivel, navegação por teclado).
-- Responsividade mobile-first nas areas de maior interacao.
-- Feedback instantaneo ao usuario (toast, score, status de auditoria).
+### Execucao em modo start
+```bash
+npm --prefix backend run start
+```
+
+### Testes
+```bash
+npm --prefix backend run test
+```
+
+## Variaveis de ambiente relevantes
+Use `backend/.env.example` como base.
+
+- `PORT`
+- `NODE_ENV`
+- `LOG_LEVEL`
+- `DATA_FILE`
+- `CORS_ORIGIN`
+- `RATE_LIMIT_WINDOW_MS`
+- `RATE_LIMIT_MAX`
+- `AUTH_LOGIN_RATE_LIMIT_WINDOW_MS`
+- `AUTH_LOGIN_RATE_LIMIT_MAX`
+- `AUTH_MAX_FAILED_ATTEMPTS`
+- `AUTH_LOCKOUT_WINDOW_MS`
+- `IDEMPOTENCY_TTL_MS`
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `ACCESS_TOKEN_TTL`
+- `REFRESH_TOKEN_TTL`
+- `BCRYPT_ROUNDS`
+- `ADMIN_BOOTSTRAP_EMAIL`
+
+## Estrutura do projeto
+```text
+backend/
+├─ data/
+│  └─ database.json
+├─ docs/
+│  └─ openapi.json
+├─ src/
+│  ├─ app.js
+│  ├─ server.js
+│  ├─ application/
+│  │  └─ services/
+│  ├─ config/
+│  ├─ domain/
+│  ├─ infrastructure/
+│  │  ├─ persistence/
+│  │  ├─ repositories/
+│  │  └─ security/
+│  ├─ interfaces/
+│  │  └─ http/
+│  │     ├─ controllers/
+│  │     ├─ middlewares/
+│  │     ├─ routes/
+│  │     └─ schemas/
+│  └─ utils/
+└─ tests/
+```
+
+## Boas praticas e padroes aplicados
+- Separacao clara de responsabilidade por camada.
+- Erros de dominio com codigo padronizado e HTTP consistente.
+- Contratos de entrada validados e saneados antes da regra de negocio.
+- Logs estruturados com correlacao por `requestId`.
+- Testes automatizados cobrindo auth, health, CRUD, idempotencia e concorrencia.
+- API versionada (`/api/v1`) com contrato OpenAPI atualizado.
 
 ## Melhorias futuras
-- Quebrar `app.js` em modulos de dominio (`state`, `ui`, `a11y`, `api`).
-- Testes e2e de fluxos criticos com Playwright.
-- Suporte a importacao/exportacao para formatos de design token (Style Dictionary).
-- Modo colaborativo com comparacao de versoes lado a lado.
-- Internacionalizacao de interface (i18n).
+- Migracao para banco relacional (PostgreSQL) com indices e migracoes.
+- Fila assincroma para tarefas pesadas de analise e integracoes.
+- Telemetria com Prometheus + tracing distribuido.
+- RBAC com permissoes granulares por recurso.
+- Testes de carga automatizados em pipeline CI.
 
 ---
 
