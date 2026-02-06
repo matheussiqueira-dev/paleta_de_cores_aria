@@ -73,6 +73,10 @@
     },
     contrastLinkedToPalette: true,
     activePreset: "default",
+    history: {
+      stack: [],
+      index: -1,
+    },
   };
 
   const swatchCards = {};
@@ -105,10 +109,17 @@
     generateButton: document.getElementById("generate-harmony"),
     resetButton: document.getElementById("reset-palette"),
     copyCssButton: document.getElementById("copy-css"),
+    undoButton: document.getElementById("undo-palette"),
+    redoButton: document.getElementById("redo-palette"),
     copyJsonButton: document.getElementById("copy-json"),
     downloadJsonButton: document.getElementById("download-json"),
+    importJsonButton: document.getElementById("import-json"),
+    importJsonFile: document.getElementById("import-json-file"),
     swapContrastButton: document.getElementById("swap-contrast"),
     usePaletteContrastButton: document.getElementById("use-palette-contrast"),
+    mobileMenuToggle: document.getElementById("mobile-menu-toggle"),
+    mobileMenuPanel: document.getElementById("mobile-menu-panel"),
+    mobileMenuLinks: Array.from(document.querySelectorAll("#mobile-menu-panel a")),
   };
 
   init();
@@ -117,14 +128,16 @@
     hydrateStateFromStorage();
     hydrateStateFromQuery();
 
+    initializeHistory(state.palette);
     buildSwatchCards();
     bindEvents();
 
     applyTheme(state.themeMode, false);
-    applyPalette(state.palette, { persist: false, syncInputs: true });
+    applyPalette(state.palette, { persist: false, syncInputs: true, pushHistory: false });
     syncContrastInputs();
     updateContrast();
     setActivePresetChip(state.activePreset);
+    updateHistoryButtons();
   }
 
   function bindEvents() {
@@ -195,6 +208,18 @@
       });
     }
 
+    if (elements.undoButton) {
+      elements.undoButton.addEventListener("click", () => {
+        undoPalette();
+      });
+    }
+
+    if (elements.redoButton) {
+      elements.redoButton.addEventListener("click", () => {
+        redoPalette();
+      });
+    }
+
     if (elements.copyCssButton) {
       elements.copyCssButton.addEventListener("click", () => {
         copyText(getCssTokenBlock(state.palette), "Variáveis CSS copiadas.");
@@ -223,6 +248,28 @@
       });
     }
 
+    if (elements.importJsonButton && elements.importJsonFile) {
+      elements.importJsonButton.addEventListener("click", () => {
+        elements.importJsonFile.click();
+      });
+
+      elements.importJsonFile.addEventListener("change", async (event) => {
+        const input = event.target;
+        const file = input && input.files ? input.files[0] : null;
+        if (!file) {
+          return;
+        }
+        try {
+          const text = await file.text();
+          importPaletteFromJson(text);
+        } catch (error) {
+          showToast("Falha ao ler o arquivo JSON.");
+        } finally {
+          input.value = "";
+        }
+      });
+    }
+
     if (elements.shareButton) {
       elements.shareButton.addEventListener("click", () => {
         const url = buildShareUrl();
@@ -232,6 +279,8 @@
 
     bindContrastControls();
     observeSystemTheme();
+    bindKeyboardShortcuts();
+    bindMobileMenu();
   }
 
   function bindContrastControls() {
@@ -287,6 +336,108 @@
         updateContrast();
         showToast("Checker sincronizado com os tokens de texto e fundo.");
       });
+    }
+  }
+
+  function bindKeyboardShortcuts() {
+    document.addEventListener("keydown", (event) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const modifier = event.ctrlKey || event.metaKey;
+      if (!modifier || event.altKey) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      const isUndo = key === "z" && !event.shiftKey;
+      const isRedo = key === "y" || (key === "z" && event.shiftKey);
+
+      if (isUndo) {
+        event.preventDefault();
+        undoPalette();
+      } else if (isRedo) {
+        event.preventDefault();
+        redoPalette();
+      }
+    });
+  }
+
+  function bindMobileMenu() {
+    if (!elements.mobileMenuToggle || !elements.mobileMenuPanel) {
+      return;
+    }
+
+    elements.mobileMenuToggle.addEventListener("click", () => {
+      setMobileMenuOpen(!isMobileMenuOpen());
+    });
+
+    elements.mobileMenuLinks.forEach((link) => {
+      link.addEventListener("click", () => {
+        setMobileMenuOpen(false);
+      });
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!isMobileMenuOpen()) {
+        return;
+      }
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (
+        elements.mobileMenuPanel.contains(target) ||
+        elements.mobileMenuToggle.contains(target) ||
+        !elements.mobileMenuPanel ||
+        !elements.mobileMenuToggle
+      ) {
+        return;
+      }
+      setMobileMenuOpen(false);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && isMobileMenuOpen()) {
+        setMobileMenuOpen(false);
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 860 && isMobileMenuOpen()) {
+        setMobileMenuOpen(false);
+      }
+    });
+  }
+
+  function isMobileMenuOpen() {
+    return Boolean(
+      elements.mobileMenuToggle &&
+        elements.mobileMenuToggle.getAttribute("aria-expanded") === "true" &&
+        elements.mobileMenuPanel &&
+        !elements.mobileMenuPanel.hasAttribute("hidden")
+    );
+  }
+
+  function setMobileMenuOpen(open) {
+    if (!elements.mobileMenuToggle || !elements.mobileMenuPanel) {
+      return;
+    }
+    const nextOpen = Boolean(open);
+    elements.mobileMenuToggle.setAttribute("aria-expanded", String(nextOpen));
+    elements.mobileMenuToggle.classList.toggle("is-open", nextOpen);
+    if (nextOpen) {
+      elements.mobileMenuPanel.removeAttribute("hidden");
+    } else {
+      elements.mobileMenuPanel.setAttribute("hidden", "");
     }
   }
 
@@ -348,10 +499,14 @@
     const settings = {
       persist: true,
       syncInputs: true,
+      pushHistory: true,
       ...options,
     };
 
     state.palette = sanitizePalette(nextPalette, state.palette);
+    if (settings.pushHistory) {
+      pushHistorySnapshot(state.palette);
+    }
     TOKEN_META.forEach((tokenMeta) => {
       elements.root.style.setProperty(`--color-${tokenMeta.key}`, state.palette[tokenMeta.key]);
     });
@@ -376,6 +531,7 @@
     if (settings.persist) {
       safeStorageSet(STORAGE_KEYS.palette, JSON.stringify(state.palette));
     }
+    updateHistoryButtons();
   }
 
   function syncPaletteInputs() {
@@ -718,6 +874,131 @@
       button.classList.toggle("is-active", isActive);
       button.setAttribute("aria-pressed", String(isActive));
     });
+  }
+
+  function importPaletteFromJson(jsonText) {
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch (error) {
+      showToast("JSON inválido. Revise o arquivo e tente novamente.");
+      return;
+    }
+
+    const candidate = extractPaletteCandidate(parsed);
+    if (!candidate || typeof candidate !== "object") {
+      showToast("Formato não suportado. Use um JSON com tokens de cor.");
+      return;
+    }
+
+    const hasAtLeastOneToken = TOKEN_META.some((tokenMeta) => normalizeHex(candidate[tokenMeta.key], null));
+    if (!hasAtLeastOneToken) {
+      showToast("Nenhum token reconhecido no JSON importado.");
+      return;
+    }
+
+    state.activePreset = "";
+    state.contrastLinkedToPalette = true;
+    setActivePresetChip("");
+    applyPalette(sanitizePalette(candidate, state.palette));
+    showToast("Tokens importados com sucesso.");
+  }
+
+  function extractPaletteCandidate(payload) {
+    if (!payload || typeof payload !== "object") {
+      return null;
+    }
+    if (payload.palette && typeof payload.palette === "object") {
+      return payload.palette;
+    }
+    if (payload.tokens && typeof payload.tokens === "object") {
+      return payload.tokens;
+    }
+    if (payload.colors && typeof payload.colors === "object") {
+      return payload.colors;
+    }
+    return payload;
+  }
+
+  function initializeHistory(initialPalette) {
+    const snapshot = getPaletteSnapshot(initialPalette);
+    state.history.stack = [snapshot];
+    state.history.index = 0;
+  }
+
+  function pushHistorySnapshot(palette) {
+    const nextSnapshot = getPaletteSnapshot(palette);
+    const current = state.history.stack[state.history.index];
+    if (current && arePalettesEqual(current, nextSnapshot)) {
+      return;
+    }
+
+    if (state.history.index < state.history.stack.length - 1) {
+      state.history.stack = state.history.stack.slice(0, state.history.index + 1);
+    }
+
+    state.history.stack.push(nextSnapshot);
+    state.history.index = state.history.stack.length - 1;
+
+    const maxHistorySize = 80;
+    if (state.history.stack.length > maxHistorySize) {
+      state.history.stack.shift();
+      state.history.index = state.history.stack.length - 1;
+    }
+  }
+
+  function undoPalette() {
+    if (state.history.index <= 0) {
+      showToast("Não há ações anteriores para desfazer.");
+      return;
+    }
+
+    state.history.index -= 1;
+    const snapshot = state.history.stack[state.history.index];
+    state.activePreset = "";
+    setActivePresetChip("");
+    applyPalette(snapshot, { pushHistory: false });
+    showToast("Ação desfeita.");
+  }
+
+  function redoPalette() {
+    if (state.history.index >= state.history.stack.length - 1) {
+      showToast("Não há ações futuras para refazer.");
+      return;
+    }
+
+    state.history.index += 1;
+    const snapshot = state.history.stack[state.history.index];
+    state.activePreset = "";
+    setActivePresetChip("");
+    applyPalette(snapshot, { pushHistory: false });
+    showToast("Ação refeita.");
+  }
+
+  function updateHistoryButtons() {
+    if (!elements.undoButton || !elements.redoButton) {
+      return;
+    }
+
+    const canUndo = state.history.index > 0;
+    const canRedo = state.history.index < state.history.stack.length - 1;
+
+    elements.undoButton.disabled = !canUndo;
+    elements.redoButton.disabled = !canRedo;
+    elements.undoButton.setAttribute("aria-disabled", String(!canUndo));
+    elements.redoButton.setAttribute("aria-disabled", String(!canRedo));
+  }
+
+  function getPaletteSnapshot(palette) {
+    const snapshot = {};
+    TOKEN_META.forEach((tokenMeta) => {
+      snapshot[tokenMeta.key] = palette[tokenMeta.key];
+    });
+    return snapshot;
+  }
+
+  function arePalettesEqual(a, b) {
+    return TOKEN_META.every((tokenMeta) => a[tokenMeta.key] === b[tokenMeta.key]);
   }
 
   function sanitizePalette(candidate, basePalette) {
