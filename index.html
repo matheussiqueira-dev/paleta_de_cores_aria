@@ -93,6 +93,17 @@
         </nav>
 
         <div class="header-actions">
+          <label class="visually-hidden" for="quick-jump">Atalho de navegacao</label>
+          <select id="quick-jump" class="quick-jump" aria-label="Atalho rapido de secao">
+            <option value="">Ir para...</option>
+            <option value="#laboratorio">Laboratorio</option>
+            <option value="#biblioteca">Biblioteca</option>
+            <option value="#nuvem">Nuvem</option>
+            <option value="#acessibilidade">Auditoria</option>
+            <option value="#componentes">Componentes</option>
+            <option value="#tokens">Tokens</option>
+          </select>
+
           <div class="theme-toggle" role="group" aria-label="Modo de tema">
             <button type="button" class="theme-toggle__option" data-theme-mode="light">Claro</button>
             <button type="button" class="theme-toggle__option" data-theme-mode="dark">Escuro</button>
@@ -183,6 +194,51 @@
             <h3>3. Distribua com confianca</h3>
             <p>Salve localmente, sincronize na API e compartilhe links publicos com rastreabilidade.</p>
             <a href="#nuvem">Sincronizar nuvem</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel operations-cockpit" aria-label="Cockpit de operacao e maturidade">
+        <div class="section-head">
+          <p class="eyebrow">Guided UX</p>
+          <h2>Cockpit de progresso da jornada</h2>
+          <p>Acompanhe a proxima melhor acao e o nivel de prontidao da sua paleta para publicacao.</p>
+        </div>
+
+        <div class="ops-grid">
+          <article class="ops-card">
+            <h3>Proxima melhor acao</h3>
+            <p id="ux-next-action" class="ops-next-action" aria-live="polite">
+              Ajuste os tokens base e valide contraste para comecar.
+            </p>
+            <div class="ops-progress">
+              <div class="ops-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                <span id="ux-progress-bar"></span>
+              </div>
+              <p id="ux-progress-label" class="ops-progress__label">0% concluido (0/4)</p>
+            </div>
+          </article>
+
+          <article class="ops-card">
+            <h3>Checklist de prontidao</h3>
+            <ul class="ops-checklist" aria-label="Checklist de maturidade operacional">
+              <li id="ux-task-base">
+                <span>Base da paleta definida</span>
+                <strong>Pendente</strong>
+              </li>
+              <li id="ux-task-audit">
+                <span>Auditoria WCAG sem riscos criticos</span>
+                <strong>Pendente</strong>
+              </li>
+              <li id="ux-task-library">
+                <span>Versao salva na biblioteca local</span>
+                <strong>Pendente</strong>
+              </li>
+              <li id="ux-task-cloud">
+                <span>Distribuicao concluida na nuvem</span>
+                <strong>Pendente</strong>
+              </li>
+            </ul>
           </article>
         </div>
       </section>

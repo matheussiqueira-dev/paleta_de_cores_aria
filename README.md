@@ -145,6 +145,7 @@ npm run test:frontend
 ## API e documentação
 - Base local padrão: `http://localhost:3333`
 - OpenAPI: `http://localhost:3333/api/v1/docs/openapi.json`
+- Racional UX/UI: `docs/ux-ui-rationale.md`
 
 Endpoints principais:
 - Auth: `/api/v1/auth/*`

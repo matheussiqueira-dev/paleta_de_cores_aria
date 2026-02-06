@@ -224,6 +224,7 @@
     mobileMenuPanel: document.getElementById("mobile-menu-panel"),
     mobileMenuLinks: Array.from(document.querySelectorAll("#mobile-menu-panel a")),
     navLinks: Array.from(document.querySelectorAll(".main-nav a, #mobile-menu-panel a")),
+    quickJumpSelect: document.getElementById("quick-jump"),
     apiBaseUrlInput: document.getElementById("api-base-url"),
     apiSaveConfigButton: document.getElementById("api-save-config"),
     apiNameInput: document.getElementById("api-auth-name"),
@@ -252,6 +253,13 @@
     uxCloudCount: document.getElementById("ux-cloud-count"),
     uxStageLabel: document.getElementById("ux-stage-label"),
     uxQualityNote: document.getElementById("ux-quality-note"),
+    uxNextAction: document.getElementById("ux-next-action"),
+    uxProgressBar: document.getElementById("ux-progress-bar"),
+    uxProgressLabel: document.getElementById("ux-progress-label"),
+    uxTaskBase: document.getElementById("ux-task-base"),
+    uxTaskAudit: document.getElementById("ux-task-audit"),
+    uxTaskLibrary: document.getElementById("ux-task-library"),
+    uxTaskCloud: document.getElementById("ux-task-cloud"),
     auditScore: document.getElementById("audit-score"),
     auditGrade: document.getElementById("audit-grade"),
     auditSummary: document.getElementById("audit-summary"),
@@ -328,6 +336,20 @@
         const mode = button.dataset.themeMode;
         applyTheme(mode, true);
       });
+    });
+
+    elements.quickJumpSelect?.addEventListener("change", () => {
+      const targetHash = String(elements.quickJumpSelect.value || "");
+      if (!targetHash || !targetHash.startsWith("#")) {
+        return;
+      }
+
+      const target = document.querySelector(targetHash);
+      if (target instanceof HTMLElement) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      elements.quickJumpSelect.value = "";
+      setMobileMenuOpen(false);
     });
 
     elements.presetButtons.forEach((button) => {
@@ -1891,6 +1913,97 @@
         failingChecks === 0
           ? "Auditoria local sem pendências críticas. Fluxo pronto para publicar e compartilhar."
           : `Auditoria detectou ${failingChecks} ponto(s) de risco. Priorize contraste entre texto, superfície e fundo.`;
+    }
+
+    updateOperationalChecklist({
+      auditReport,
+      cloudCount,
+      localCount,
+      authenticated,
+    });
+  }
+
+  function updateOperationalChecklist(context) {
+    const auditReport = context?.auditReport || buildPaletteAuditReport(state.palette);
+    const localCount = normalizePositiveInteger(context?.localCount, state.savedPalettes.length);
+    const cloudCount = normalizePositiveInteger(
+      context?.cloudCount,
+      Math.max(state.api.cloudTotal, state.api.cloudPalettes.length)
+    );
+    const authenticated = typeof context?.authenticated === "boolean" ? context.authenticated : isApiAuthenticated();
+
+    const isPaletteCustomized =
+      !arePalettesEqual(state.palette, DEFAULT_PALETTE) ||
+      sanitizePaletteName(state.paletteName).toLowerCase() !== "paleta em edição";
+    const auditReady = (auditReport?.audit?.failingChecks ?? 0) === 0 && (auditReport?.audit?.score ?? 0) >= 75;
+    const libraryReady = localCount > 0;
+    const cloudReady = authenticated && cloudCount > 0;
+
+    const checklist = [
+      {
+        element: elements.uxTaskBase,
+        done: isPaletteCustomized,
+        doneLabel: "Concluida",
+        todoLabel: "Pendente",
+      },
+      {
+        element: elements.uxTaskAudit,
+        done: auditReady,
+        doneLabel: "Concluida",
+        todoLabel: "Pendente",
+      },
+      {
+        element: elements.uxTaskLibrary,
+        done: libraryReady,
+        doneLabel: "Concluida",
+        todoLabel: "Pendente",
+      },
+      {
+        element: elements.uxTaskCloud,
+        done: cloudReady,
+        doneLabel: "Concluida",
+        todoLabel: authenticated ? "Pendente" : "Login",
+      },
+    ];
+
+    checklist.forEach((item) => {
+      if (!item.element) {
+        return;
+      }
+      item.element.classList.toggle("is-done", item.done);
+      item.element.dataset.state = item.done ? "done" : "todo";
+      const status = item.element.querySelector("strong");
+      if (status) {
+        status.textContent = item.done ? item.doneLabel : item.todoLabel;
+      }
+    });
+
+    const completed = checklist.filter((item) => item.done).length;
+    const total = checklist.length;
+    const progress = Math.round((completed / total) * 100);
+
+    if (elements.uxProgressBar) {
+      elements.uxProgressBar.style.width = `${progress}%`;
+      elements.uxProgressBar.parentElement?.setAttribute("aria-valuenow", String(progress));
+    }
+    if (elements.uxProgressLabel) {
+      elements.uxProgressLabel.textContent = `${progress}% concluido (${completed}/${total})`;
+    }
+
+    if (elements.uxNextAction) {
+      const nextAction =
+        !isPaletteCustomized
+          ? "Defina os tokens principais e nomeie a paleta para estabelecer uma base consistente."
+          : !auditReady
+            ? "Execute ajustes de contraste ate eliminar checkpoints criticos da auditoria."
+            : !libraryReady
+              ? "Salve uma versao na biblioteca local para criar historico e comparacao."
+              : !authenticated
+                ? "Conecte sua conta para habilitar distribuicao e monitoramento em nuvem."
+                : !cloudReady
+                  ? "Publique a paleta na nuvem para concluir o fluxo de entrega."
+                  : "Fluxo completo: sua paleta esta pronta para compartilhamento e handoff tecnico.";
+      elements.uxNextAction.textContent = nextAction;
     }
   }
 
